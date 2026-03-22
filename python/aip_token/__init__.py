@@ -2,6 +2,20 @@
 
 from aip_token.claims import AipClaims
 from aip_token.compact import CompactToken
+from aip_token.delegation import DelegationBlock
 from aip_token.error import TokenError
+from aip_token.policy import SimplePolicy
 
-__all__ = ["AipClaims", "CompactToken", "TokenError"]
+try:
+    from aip_token.chained import ChainedToken
+except ImportError:
+    ChainedToken = None  # type: ignore[assignment,misc]
+
+__all__ = [
+    "AipClaims",
+    "ChainedToken",
+    "CompactToken",
+    "DelegationBlock",
+    "SimplePolicy",
+    "TokenError",
+]
