@@ -1,7 +1,7 @@
 use std::time::{Duration, SystemTime};
 
 use biscuit_auth::{
-    builder::{Algorithm, BiscuitBuilder},
+    builder::{Algorithm, BiscuitBuilder, BlockBuilder},
     Biscuit, KeyPair as BiscuitKeyPair, PrivateKey as BiscuitPrivateKey,
     PublicKey as BiscuitPublicKey,
 };
@@ -151,6 +151,73 @@ impl ChainedToken {
     /// The authority block is block 0; each appended block adds one level.
     pub fn current_depth(&self) -> usize {
         self.biscuit.block_count() - 1
+    }
+
+    /// Append a delegation block to this token, producing a new attenuated token.
+    ///
+    /// The delegation block records `delegator`, `delegate`, and `context` as
+    /// Datalog facts, and adds `check` rules that narrow the token's usable
+    /// scopes and (optionally) budget.
+    ///
+    /// No keypair is required -- Biscuit generates an ephemeral key internally
+    /// for the new block.
+    pub fn delegate(
+        &self,
+        delegator: &str,
+        delegate: &str,
+        scopes: &[&str],
+        budget_cents: Option<i64>,
+        context: &str,
+    ) -> Result<Self, TokenError> {
+        // 1. Context must be non-empty.
+        if context.is_empty() {
+            return Err(TokenError::TokenMalformed(
+                "context must be non-empty".into(),
+            ));
+        }
+
+        // 2. Check depth limit.
+        if self.current_depth() >= self.max_delegation_depth as usize {
+            return Err(TokenError::DepthExceeded);
+        }
+
+        // 3. Build Datalog source for the delegation block.
+        let mut datalog = String::new();
+
+        // Facts for audit trail
+        datalog.push_str(&format!("delegator(\"{delegator}\");\n"));
+        datalog.push_str(&format!("delegate(\"{delegate}\");\n"));
+        datalog.push_str(&format!("context(\"{context}\");\n"));
+
+        // Check that the authority block grants each requested scope.
+        // Each check ensures the corresponding right(...) fact exists.
+        for scope in scopes {
+            datalog.push_str(&format!("check if right(\"{scope}\");\n"));
+        }
+
+        // Budget check (if set): the authority budget must be >= this value.
+        if let Some(cents) = budget_cents {
+            datalog.push_str(&format!(
+                "check if budget($b), $b >= {cents};\n"
+            ));
+        }
+
+        // 4. Build the block and append it.
+        let block_builder = BlockBuilder::new()
+            .code(&datalog)
+            .map_err(|e| TokenError::CreationFailed(format!("delegation datalog parse: {e}")))?;
+
+        let new_biscuit = self
+            .biscuit
+            .append(block_builder)
+            .map_err(|e| TokenError::CreationFailed(format!("delegation append: {e}")))?;
+
+        // 5. Return a new ChainedToken wrapping the extended biscuit.
+        Ok(Self {
+            biscuit: new_biscuit,
+            issuer_id: self.issuer_id.clone(),
+            max_delegation_depth: self.max_delegation_depth,
+        })
     }
 }
 
