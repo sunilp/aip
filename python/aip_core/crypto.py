@@ -9,6 +9,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
+    NoEncryption,
+    PrivateFormat,
     PublicFormat,
 )
 from cryptography.exceptions import InvalidSignature
@@ -30,6 +32,10 @@ class KeyPair:
         return self._private_key.public_key().public_bytes(
             Encoding.Raw, PublicFormat.Raw
         )
+
+    def private_key_bytes(self) -> bytes:
+        """Return the raw 32-byte Ed25519 private key."""
+        return self._private_key.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption())
 
     def public_key_multibase(self) -> str:
         """Return the public key as a z-prefix base58btc multibase string."""

@@ -45,6 +45,12 @@ class TestSignAndVerify:
         assert verify(kp2.public_key_bytes(), message, sig) is False
 
 
+class TestPrivateKeyBytes:
+    def test_private_key_bytes(self):
+        kp = KeyPair.generate()
+        assert len(kp.private_key_bytes()) == 32
+
+
 class TestMultibase:
     def test_multibase_roundtrip(self):
         kp = KeyPair.generate()

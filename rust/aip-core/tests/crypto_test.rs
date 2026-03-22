@@ -41,6 +41,13 @@ fn test_verify_rejects_wrong_key() {
 }
 
 #[test]
+fn test_private_key_bytes() {
+    let kp = KeyPair::generate();
+    let bytes = kp.private_key_bytes();
+    assert_eq!(bytes.len(), 32);
+}
+
+#[test]
 fn test_public_key_multibase_roundtrip() {
     let kp = KeyPair::generate();
     let multibase = kp.public_key_multibase();

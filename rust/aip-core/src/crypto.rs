@@ -39,6 +39,11 @@ impl KeyPair {
             .map_err(|e| AipError::InvalidIdentifier(format!("base58btc decode failed: {e}")))
     }
 
+    /// Return the raw 32-byte Ed25519 private key.
+    pub fn private_key_bytes(&self) -> [u8; 32] {
+        self.signing_key.to_bytes()
+    }
+
     /// Sign a message, returning the 64-byte Ed25519 signature.
     pub fn sign(&self, message: &[u8]) -> Vec<u8> {
         let sig: Signature = self.signing_key.sign(message);
