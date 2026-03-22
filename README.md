@@ -4,15 +4,18 @@ AIP is a protocol for verifiable, delegable identity for AI agents that works ac
 
 ## Status
 
-Early development. The specification is being written alongside reference implementations in Python and Rust.
+Phase 2 complete. The protocol supports both compact (JWT, single-hop) and chained (Biscuit, multi-hop delegation) token modes with full scope attenuation, budget tracking, and policy profiles. Reference implementations in Python and Rust.
 
 ## Features
 
 - Two token modes: Compact (JWT) and Chained (Biscuit)
+- Chained mode with Biscuit-based delegation and scope attenuation
 - DNS-based and self-certifying identity schemes
 - Ed25519 cryptography
+- MCP middleware for token verification in tool servers
 - MCP, A2A, and HTTP protocol bindings
 - Delegation chains with cryptographic scope attenuation
+- Budget tracking in integer cents (no floating-point rounding)
 - Provenance binding via completion blocks
 - Policy profiles (Simple, Standard, Advanced)
 
@@ -43,6 +46,37 @@ token = CompactToken.create(claims, kp)
 verified = CompactToken.verify(token, kp.public_key_bytes())
 print(f"Issuer: {verified.claims.iss}")
 print(f"Has search scope: {verified.has_scope('tool:search')}")
+```
+
+### Chained Mode (Delegation)
+
+```python
+from aip_core.crypto import KeyPair
+from aip_token.chained import ChainedToken
+
+root_kp = KeyPair.generate()
+
+# Orchestrator creates authority token
+token = ChainedToken.create_authority(
+    issuer="aip:web:myorg.com/orchestrator",
+    scopes=["tool:search", "tool:email"],
+    budget_cents=500,
+    max_depth=3,
+    ttl_seconds=3600,
+    keypair=root_kp,
+)
+
+# Delegate to specialist with narrower scope
+delegated = token.delegate(
+    delegator="aip:web:myorg.com/orchestrator",
+    delegate="aip:web:myorg.com/specialist",
+    scopes=["tool:search"],
+    budget_cents=100,
+    context="research task for user query",
+)
+
+# Authorize before calling the tool
+delegated.authorize("tool:search", root_kp.public_key_bytes())
 ```
 
 ## Installation
@@ -81,6 +115,7 @@ See [SPEC.md](SPEC.md) for the specification overview and links to individual sp
 ## Documentation
 
 - [Quickstart guide](docs/quickstart.md) -- get running in 5 minutes
+- [Delegation guide](docs/guide-delegation.md) -- chained tokens, scope attenuation, and policy profiles
 - [Competitive analysis](docs/competitive-analysis.md) -- how AIP compares to OAuth, DID, UCAN, Macaroons, and other approaches
 
 ## Examples
