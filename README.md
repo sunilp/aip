@@ -1,25 +1,22 @@
 # Agent Identity Protocol (AIP)
 
-AIP is a protocol for verifiable, delegable identity for AI agents that works across MCP and A2A. It combines identity, attenuated authorization, and provenance binding in a single token chain. Two token modes: compact (JWT, single-hop) and chained (Biscuit, multi-hop delegation). Ed25519 cryptography throughout.
+Verifiable, delegable identity for AI agents across MCP and A2A.
 
-## Status
+AIP gives every agent a cryptographic identity that flows across protocol boundaries. A single token answers: who authorized this, through which agents, with what scope at each hop, and what was the outcome. No blockchain, no wallet UX -- just Ed25519 keys and append-only token chains.
 
-Phase 2 complete. The protocol supports both compact (JWT, single-hop) and chained (Biscuit, multi-hop delegation) token modes with full scope attenuation, budget tracking, and policy profiles. Reference implementations in Python and Rust.
+## Why AIP
 
-## Features
+- MCP has no authentication layer. A2A has self-declared identities with no attestation.
+- When Agent A delegates to Agent B, no identity verification happens.
+- No existing protocol combines identity, delegation, and provenance in a single verifiable artifact.
 
-- Two token modes: Compact (JWT) and Chained (Biscuit)
-- Chained mode with Biscuit-based delegation and scope attenuation
-- DNS-based and self-certifying identity schemes
-- Ed25519 cryptography
-- MCP middleware for token verification in tool servers
-- MCP, A2A, and HTTP protocol bindings
-- Delegation chains with cryptographic scope attenuation
-- Budget tracking in integer cents (no floating-point rounding)
-- Provenance binding via completion blocks
-- Policy profiles (Simple, Standard, Advanced)
+AIP fills this gap.
 
-## Quick Example
+## Quick Start (Python)
+
+```bash
+pip install -e python/
+```
 
 ```python
 from aip_core.crypto import KeyPair
@@ -27,10 +24,10 @@ from aip_token.claims import AipClaims
 from aip_token.compact import CompactToken
 import time
 
-# Generate an Ed25519 keypair
+# Generate identity
 kp = KeyPair.generate()
 
-# Create a compact token (JWT with EdDSA signature)
+# Create a compact token for MCP tool access
 claims = AipClaims(
     iss="aip:key:ed25519:" + kp.public_key_multibase(),
     sub="aip:web:example.com/tools/search",
@@ -42,21 +39,20 @@ claims = AipClaims(
 )
 token = CompactToken.create(claims, kp)
 
-# Verify the token
-verified = CompactToken.verify(token, kp.public_key_bytes())
-print(f"Issuer: {verified.claims.iss}")
-print(f"Has search scope: {verified.has_scope('tool:search')}")
+# Send to MCP server
+headers = {"X-AIP-Token": token}
 ```
 
-### Chained Mode (Delegation)
+## Multi-Agent Delegation
+
+When agents delegate to other agents, each hop cryptographically narrows scope:
 
 ```python
-from aip_core.crypto import KeyPair
 from aip_token.chained import ChainedToken
 
 root_kp = KeyPair.generate()
 
-# Orchestrator creates authority token
+# Orchestrator: broad authority
 token = ChainedToken.create_authority(
     issuer="aip:web:myorg.com/orchestrator",
     scopes=["tool:search", "tool:email"],
@@ -66,7 +62,7 @@ token = ChainedToken.create_authority(
     keypair=root_kp,
 )
 
-# Delegate to specialist with narrower scope
+# Delegate to specialist: only search, lower budget
 delegated = token.delegate(
     delegator="aip:web:myorg.com/orchestrator",
     delegate="aip:web:myorg.com/specialist",
@@ -75,53 +71,73 @@ delegated = token.delegate(
     context="research task for user query",
 )
 
-# Authorize before calling the tool
-delegated.authorize("tool:search", root_kp.public_key_bytes())
+# Specialist verifies before calling tool
+delegated.authorize("tool:search", root_kp.public_key_bytes())  # passes
+delegated.authorize("tool:email", root_kp.public_key_bytes())   # raises -- attenuated away
 ```
+
+## Two Token Modes
+
+**Compact** (JWT + EdDSA) -- single hop, drop-in for existing MCP servers. Standard JWT libraries can verify.
+
+**Chained** (Biscuit) -- multi-hop delegation with append-only blocks. Each block can only narrow scope, never widen. Datalog policy evaluation at each hop.
+
+Start with compact. Upgrade to chained when you need delegation. Same identity scheme, same protocol bindings.
+
+## Features
+
+- DNS-based (`aip:web:`) and self-certifying (`aip:key:`) identity schemes
+- Ed25519 cryptography, no algorithm negotiation
+- MCP, A2A, and HTTP protocol bindings
+- MCP middleware for token verification
+- Delegation chains with cryptographic scope attenuation
+- Budget tracking in integer cents
+- Policy profiles: Simple (templated), Standard (curated Datalog), Advanced (full Datalog)
+- Identity document self-signatures (protects against domain compromise)
 
 ## Installation
 
-### Python
+### Python (primary SDK)
 
 ```bash
 cd python
 pip install -e ".[dev]"
 ```
 
-### Rust
-
-Add the workspace crates as path dependencies in your `Cargo.toml`:
+### Rust (reference implementation)
 
 ```toml
 [dependencies]
 aip-core = { path = "rust/aip-core" }
 aip-token = { path = "rust/aip-token" }
+aip-mcp = { path = "rust/aip-mcp" }
 ```
 
 ## Tests
 
 ```bash
+# Python
+cd python && pytest tests/ -v
+
 # Rust
 cd rust && cargo test
 
-# Python
-cd python && pytest tests/ -v
+# Cross-language interop
+python -m pytest tests/conformance/ -v
 ```
-
-## Specification
-
-See [SPEC.md](SPEC.md) for the specification overview and links to individual spec documents in the [spec/](spec/) directory.
 
 ## Documentation
 
-- [Quickstart guide](docs/quickstart.md) -- get running in 5 minutes
-- [Delegation guide](docs/guide-delegation.md) -- chained tokens, scope attenuation, and policy profiles
-- [Competitive analysis](docs/competitive-analysis.md) -- how AIP compares to OAuth, DID, UCAN, Macaroons, and other approaches
+- [Quickstart](docs/quickstart.md) -- 5 minutes to your first AIP token
+- [Delegation guide](docs/guide-delegation.md) -- chained tokens, scope attenuation, policy profiles
+- [Competitive analysis](docs/competitive-analysis.md) -- AIP vs OAuth, DID, UCAN, Macaroons, Biscuit, SPIFFE
+- [Specification](SPEC.md) -- full protocol spec
 
 ## Examples
 
-- [Single-agent MCP](examples/single-agent-mcp/) -- an agent authenticating to an MCP tool server with AIP compact tokens
+- [Single-agent MCP](examples/single-agent-mcp/) -- agent authenticates to MCP tool server
+- [Multi-agent delegation](examples/multi-agent-delegation/) -- orchestrator delegates to specialist, calls tool server
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.
+Apache 2.0
