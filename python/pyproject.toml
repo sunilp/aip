@@ -21,7 +21,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["aip_core", "aip_token"]
+packages = ["aip_core", "aip_token", "aip_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
