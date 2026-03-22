@@ -1,0 +1,3 @@
+[workspace]
+members = ["aip-core", "aip-token"]
+resolver = "2"
