@@ -1,0 +1,13 @@
+{
+  "language": "rust",
+  "mode": "chained",
+  "iterations_per_depth": 100,
+  "depths": [
+    {"depth": 0, "token_size_bytes": 520, "create_ms": 0.0872, "verify_ms": 0.1877},
+    {"depth": 1, "token_size_bytes": 940, "append_ms": 0.0726, "verify_ms": 0.2922},
+    {"depth": 2, "token_size_bytes": 1316, "append_ms": 0.0729, "verify_ms": 0.4034},
+    {"depth": 3, "token_size_bytes": 1696, "append_ms": 0.0737, "verify_ms": 0.5156},
+    {"depth": 4, "token_size_bytes": 2072, "append_ms": 0.0746, "verify_ms": 0.6252},
+    {"depth": 5, "token_size_bytes": 2448, "append_ms": 0.0759, "verify_ms": 0.7445}
+  ]
+}

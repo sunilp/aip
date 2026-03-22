@@ -1,0 +1,43 @@
+{
+  "language": "python",
+  "mode": "chained",
+  "iterations_per_depth": 100,
+  "depths": [
+    {
+      "depth": 0,
+      "token_size_bytes": 444,
+      "create_ms": 0.0521,
+      "verify_ms": 0.1096
+    },
+    {
+      "depth": 1,
+      "token_size_bytes": 832,
+      "append_ms": 0.0419,
+      "verify_ms": 0.178
+    },
+    {
+      "depth": 2,
+      "token_size_bytes": 1172,
+      "append_ms": 0.042,
+      "verify_ms": 0.2477
+    },
+    {
+      "depth": 3,
+      "token_size_bytes": 1512,
+      "append_ms": 0.0419,
+      "verify_ms": 0.3149
+    },
+    {
+      "depth": 4,
+      "token_size_bytes": 1856,
+      "append_ms": 0.0416,
+      "verify_ms": 0.3792
+    },
+    {
+      "depth": 5,
+      "token_size_bytes": 2196,
+      "append_ms": 0.042,
+      "verify_ms": 0.447
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "language": "python",
+  "mode": "compact",
+  "iterations": 1000,
+  "create_mean_ms": 0.086,
+  "create_p50_ms": 0.0829,
+  "create_p99_ms": 0.1099,
+  "verify_mean_ms": 0.1894,
+  "verify_p50_ms": 0.1849,
+  "verify_p99_ms": 0.2307,
+  "token_size_bytes": 356
+}

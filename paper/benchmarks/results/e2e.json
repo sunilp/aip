@@ -1,0 +1,80 @@
+{
+  "description": "End-to-end latency comparison: AIP chained vs OAuth vs no-auth",
+  "num_hops": 2,
+  "oauth_hop_latency_ms": 10,
+  "iterations": 50,
+  "conditions": [
+    {
+      "name": "no_auth",
+      "inference_ms": 0,
+      "auth_ms": 0,
+      "total_ms": 0.0001
+    },
+    {
+      "name": "aip_chained",
+      "inference_ms": 0,
+      "auth_ms": 0.3928,
+      "total_ms": 0.3928
+    },
+    {
+      "name": "oauth_exchange",
+      "inference_ms": 0,
+      "auth_ms": 20,
+      "total_ms": 20
+    },
+    {
+      "name": "no_auth",
+      "inference_ms": 100,
+      "auth_ms": 0,
+      "total_ms": 103.6578
+    },
+    {
+      "name": "aip_chained",
+      "inference_ms": 100,
+      "auth_ms": 2.2665,
+      "total_ms": 102.2665
+    },
+    {
+      "name": "oauth_exchange",
+      "inference_ms": 100,
+      "auth_ms": 20,
+      "total_ms": 120
+    },
+    {
+      "name": "no_auth",
+      "inference_ms": 500,
+      "auth_ms": 0,
+      "total_ms": 503.3841
+    },
+    {
+      "name": "aip_chained",
+      "inference_ms": 500,
+      "auth_ms": 2.2105,
+      "total_ms": 502.2105
+    },
+    {
+      "name": "oauth_exchange",
+      "inference_ms": 500,
+      "auth_ms": 20,
+      "total_ms": 520
+    },
+    {
+      "name": "no_auth",
+      "inference_ms": 1000,
+      "auth_ms": 0,
+      "total_ms": 1004.1631
+    },
+    {
+      "name": "aip_chained",
+      "inference_ms": 1000,
+      "auth_ms": 1.6257,
+      "total_ms": 1001.6257
+    },
+    {
+      "name": "oauth_exchange",
+      "inference_ms": 1000,
+      "auth_ms": 20,
+      "total_ms": 1020
+    }
+  ]
+}
