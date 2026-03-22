@@ -1,1 +1,3 @@
-// Placeholder for aip-token crate (Phase 2)
+pub mod claims;
+pub mod compact;
+pub mod error;

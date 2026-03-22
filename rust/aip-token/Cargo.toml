@@ -3,4 +3,16 @@ name = "aip-token"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Token types for the Agent Identity Protocol"
+description = "Token creation and verification for the Agent Identity Protocol"
+
+[dependencies]
+aip-core = { path = "../aip-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+base64 = "0.22"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+
+[dev-dependencies]
+aip-core = { path = "../aip-core" }
