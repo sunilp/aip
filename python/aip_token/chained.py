@@ -22,15 +22,28 @@ from biscuit_auth import (
 from aip_core.crypto import KeyPair
 from aip_token.error import TokenError
 
+# biscuit-python >= 0.4 requires an Algorithm argument for from_bytes();
+# older versions do not.  Detect at import time.
+try:
+    from biscuit_auth import Algorithm as _Algorithm
+    _ED25519 = _Algorithm.Ed25519
+except ImportError:
+    _ED25519 = None  # type: ignore[assignment]
+
 
 def _biscuit_private_key(keypair: KeyPair) -> BiscuitPrivateKey:
     """Convert an AIP KeyPair's private key to a biscuit PrivateKey."""
-    return BiscuitPrivateKey.from_bytes(keypair.private_key_bytes())
+    raw = keypair.private_key_bytes()
+    if _ED25519 is not None:
+        return BiscuitPrivateKey.from_bytes(raw, _ED25519)
+    return BiscuitPrivateKey.from_bytes(raw)  # type: ignore[call-arg]
 
 
 def _biscuit_public_key(raw_bytes: bytes) -> BiscuitPublicKey:
     """Convert raw 32-byte public key bytes to a biscuit PublicKey."""
-    return BiscuitPublicKey.from_bytes(raw_bytes)
+    if _ED25519 is not None:
+        return BiscuitPublicKey.from_bytes(raw_bytes, _ED25519)
+    return BiscuitPublicKey.from_bytes(raw_bytes)  # type: ignore[call-arg]
 
 
 class ChainedToken:
@@ -154,26 +167,26 @@ class ChainedToken:
         biscuit_pubkey = _biscuit_public_key(root_public_key_bytes)
         biscuit = Biscuit.from_base64(s, biscuit_pubkey)
 
-        # Extract issuer and max_depth from authority block via an authorizer
-        auth_code = "allow if true;"
-        authorizer = AuthorizerBuilder(auth_code).build(biscuit)
-        authorizer.authorize()
-
-        # Query identity fact
-        identities = authorizer.query(Rule("data($id) <- identity($id)"))
+        # Extract issuer and max_depth by parsing the authority block source.
+        # We avoid using Authorizer here because it triggers all checks
+        # (tool, time) which have no matching facts during deserialization.
         issuer = "unknown"
-        if identities:
-            terms = identities[0].terms
-            if terms:
-                issuer = str(terms[0])
-
-        # Query max_depth fact
-        depths = authorizer.query(Rule("data($d) <- max_depth($d)"))
         max_depth = 3
-        if depths:
-            terms = depths[0].terms
-            if terms:
-                max_depth = int(terms[0])
+        try:
+            source = biscuit.block_source(0)
+            if source:
+                for line in source.split("\n"):
+                    line = line.strip().rstrip(";")
+                    if line.startswith("identity("):
+                        # Extract string between quotes: identity("aip:web:...")
+                        start = line.index('"') + 1
+                        end = line.rindex('"')
+                        issuer = line[start:end]
+                    elif line.startswith("max_depth("):
+                        val = line[len("max_depth("):-1]
+                        max_depth = int(val)
+        except Exception:
+            pass
 
         # Depth is block_count - 1 (authority block is block 0)
         depth = biscuit.block_count() - 1
