@@ -1,7 +1,7 @@
 use std::time::{Duration, SystemTime};
 
 use biscuit_auth::{
-    builder::{Algorithm, BiscuitBuilder, BlockBuilder},
+    builder::{Algorithm, AuthorizerBuilder, BiscuitBuilder, BlockBuilder},
     Biscuit, KeyPair as BiscuitKeyPair, PrivateKey as BiscuitPrivateKey,
     PublicKey as BiscuitPublicKey,
 };
@@ -52,6 +52,16 @@ impl ChainedToken {
         // right facts for each scope
         for scope in scopes {
             datalog.push_str(&format!("right(\"{scope}\");\n"));
+        }
+
+        // Scope check: the requested tool must be in the authority's allowed set.
+        // The authorizer provides a `tool(...)` ambient fact for the tool being invoked.
+        if !scopes.is_empty() {
+            let set_items: Vec<String> = scopes.iter().map(|s| format!("\"{s}\"")).collect();
+            datalog.push_str(&format!(
+                "check if tool($t), [{items}].contains($t);\n",
+                items = set_items.join(", ")
+            ));
         }
 
         // budget fact (optional)
@@ -189,10 +199,14 @@ impl ChainedToken {
         datalog.push_str(&format!("delegate(\"{delegate}\");\n"));
         datalog.push_str(&format!("context(\"{context}\");\n"));
 
-        // Check that the authority block grants each requested scope.
-        // Each check ensures the corresponding right(...) fact exists.
-        for scope in scopes {
-            datalog.push_str(&format!("check if right(\"{scope}\");\n"));
+        // Scope check: the requested tool must be in this delegation's allowed set.
+        // The authorizer provides a `tool(...)` ambient fact for the tool being invoked.
+        if !scopes.is_empty() {
+            let set_items: Vec<String> = scopes.iter().map(|s| format!("\"{s}\"")).collect();
+            datalog.push_str(&format!(
+                "check if tool($t), [{items}].contains($t);\n",
+                items = set_items.join(", ")
+            ));
         }
 
         // Budget check (if set): the authority budget must be >= this value.
@@ -218,6 +232,56 @@ impl ChainedToken {
             issuer_id: self.issuer_id.clone(),
             max_delegation_depth: self.max_delegation_depth,
         })
+    }
+
+    /// Authorize a tool invocation against this token chain.
+    ///
+    /// Provides ambient facts (`tool`, `time`, `depth`) and checks all block
+    /// policies. The authority block and each delegation block contain scope
+    /// checks of the form `check if tool($t), [allowed].contains($t)`. The
+    /// authorizer supplies the requested tool as a `tool(...)` fact, so every
+    /// block in the chain must agree the tool is permitted.
+    pub fn authorize(&self, tool: &str, root_public_key: &[u8; 32]) -> Result<(), TokenError> {
+        // 1. Construct biscuit PublicKey from root_public_key bytes
+        let biscuit_pubkey = BiscuitPublicKey::from_bytes(root_public_key, Algorithm::Ed25519)
+            .map_err(|e| TokenError::VerificationFailed(format!("public key: {e}")))?;
+
+        // 2. Re-verify the token from serialized form (ensures chain integrity)
+        let bytes = self
+            .biscuit
+            .to_vec()
+            .map_err(|e| TokenError::VerificationFailed(format!("serialize for re-verify: {e}")))?;
+        let verified = Biscuit::from(&bytes, biscuit_pubkey)
+            .map_err(|e| TokenError::VerificationFailed(format!("re-verify: {e}")))?;
+
+        // 3. Build the authorizer with ambient facts and an allow policy.
+        //    - tool("tool:search")   -- the tool being requested
+        //    - time(2026-03-22T...)  -- current UTC time
+        //    - depth(1)             -- current delegation depth
+        //    - allow if tool($t)    -- the allow policy (all block checks must pass first)
+        let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
+        let depth = self.current_depth();
+
+        let authorizer_code = format!(
+            "tool(\"{tool}\");\ntime({now});\ndepth({depth});\nallow if tool(\"{tool}\");\n",
+        );
+
+        let mut authorizer = AuthorizerBuilder::new()
+            .code(&authorizer_code)
+            .map_err(|e| {
+                TokenError::ScopeInsufficient(format!("authorizer datalog parse: {e}"))
+            })?
+            .build(&verified)
+            .map_err(|e| {
+                TokenError::ScopeInsufficient(format!("authorizer build: {e}"))
+            })?;
+
+        // 4. Run authorizer -- evaluates all checks from all blocks + the allow policy
+        authorizer.authorize().map_err(|e| {
+            TokenError::ScopeInsufficient(format!("authorization denied: {e}"))
+        })?;
+
+        Ok(())
     }
 }
 

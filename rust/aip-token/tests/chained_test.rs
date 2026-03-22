@@ -218,3 +218,116 @@ fn test_delegated_token_serialization() {
     assert_eq!(restored.current_depth(), 1);
     assert_eq!(restored.issuer(), "aip:web:example.com/root");
 }
+
+// ── Authorization tests ──
+
+#[test]
+fn test_authorize_valid_token() {
+    let root_kp = KeyPair::generate();
+    let token = ChainedToken::create_authority(
+        "aip:web:example.com/agent",
+        &["tool:search"],
+        Some(100),
+        3,
+        3600,
+        &root_kp,
+    )
+    .unwrap();
+
+    let result = token.authorize("tool:search", &root_kp.public_key_bytes());
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_authorize_rejects_unauthorized_tool() {
+    let root_kp = KeyPair::generate();
+    let token = ChainedToken::create_authority(
+        "aip:web:example.com/agent",
+        &["tool:search"],
+        Some(100),
+        3,
+        3600,
+        &root_kp,
+    )
+    .unwrap();
+
+    let result = token.authorize("tool:email", &root_kp.public_key_bytes());
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_authorize_delegated_token() {
+    let root_kp = KeyPair::generate();
+    let token = ChainedToken::create_authority(
+        "aip:web:example.com/root",
+        &["tool:search", "tool:email"],
+        Some(500),
+        3,
+        3600,
+        &root_kp,
+    )
+    .unwrap();
+
+    let delegated = token
+        .delegate(
+            "aip:web:example.com/root",
+            "aip:web:example.com/worker",
+            &["tool:search"],
+            Some(100),
+            "search task",
+        )
+        .unwrap();
+
+    // search authorized
+    assert!(delegated
+        .authorize("tool:search", &root_kp.public_key_bytes())
+        .is_ok());
+    // email rejected (attenuated away by delegation)
+    assert!(delegated
+        .authorize("tool:email", &root_kp.public_key_bytes())
+        .is_err());
+}
+
+#[test]
+fn test_authorize_two_hop_delegation() {
+    let root_kp = KeyPair::generate();
+    let token = ChainedToken::create_authority(
+        "aip:web:example.com/root",
+        &["tool:search", "tool:browse", "tool:email"],
+        Some(500),
+        3,
+        3600,
+        &root_kp,
+    )
+    .unwrap();
+
+    let t1 = token
+        .delegate(
+            "aip:web:example.com/root",
+            "aip:web:example.com/agent-a",
+            &["tool:search", "tool:browse"],
+            Some(200),
+            "delegate to a",
+        )
+        .unwrap();
+
+    let t2 = t1
+        .delegate(
+            "aip:web:example.com/agent-a",
+            "aip:web:example.com/agent-b",
+            &["tool:search"],
+            Some(50),
+            "delegate to b",
+        )
+        .unwrap();
+
+    assert!(t2
+        .authorize("tool:search", &root_kp.public_key_bytes())
+        .is_ok());
+    assert!(t2
+        .authorize("tool:browse", &root_kp.public_key_bytes())
+        .is_err());
+    assert!(t2
+        .authorize("tool:email", &root_kp.public_key_bytes())
+        .is_err());
+}
