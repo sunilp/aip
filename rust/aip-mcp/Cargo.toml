@@ -1,0 +1,13 @@
+[package]
+name = "aip-mcp"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "MCP middleware for AIP token verification"
+
+[dependencies]
+aip-core = { path = "../aip-core" }
+aip-token = { path = "../aip-token" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
