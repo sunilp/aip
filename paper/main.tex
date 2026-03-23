@@ -183,31 +183,188 @@ IETF Drafts     & $\sim$     & $\times$ & $\times$ & $\times$ & $\times$ & $\sim
 
 \subsection{Identity Scheme}
 \label{sec:identity}
-TODO
+
+\aip{} defines two identity resolution methods that share a common token format and verification path.
+
+\paragraph{DNS-based identities} use the scheme \texttt{aip:web:<domain>/<path>} and resolve via HTTPS to a well-known endpoint. The identifier \texttt{aip:web:jamjet.dev/agents/research-analyst} resolves to \texttt{https://jamjet.dev/.well-known/aip/agents/research-analyst.json}. DNS-based identities are appropriate for long-lived agents operated by organizations that control a domain name.
+
+\paragraph{Self-certifying identities} use the scheme \texttt{aip:key:ed25519:<multibase>}, where the identifier is the public key itself. No resolution step is required: the verifier extracts the key directly from the identifier. Self-certifying identities are appropriate for ephemeral sub-agents spawned by an orchestrator for a single task (Section~\ref{sec:delegation}).
+
+Both resolution methods produce an \aip{} identity document: a JSON object containing the agent's public keys, delegation parameters, supported protocol bindings, and an expiration timestamp. Figure~\ref{fig:identity-doc} shows an abbreviated example.
+
+\begin{figure}[t]
+\begin{lstlisting}[style=protocol,caption={Abbreviated \aip{} identity document. The \texttt{document\_signature} field covers the RFC~8785 canonical form of all other fields.},label={fig:identity-doc}]
+{
+  "aip": "1.0",
+  "id": "aip:web:jamjet.dev/agents/research",
+  "public_keys": [{
+    "id": "key-1",
+    "type": "Ed25519",
+    "public_key_multibase": "z6Mkf5rG...",
+    "valid_from": "2026-03-01T00:00:00Z",
+    "valid_until": "2026-06-01T00:00:00Z"
+  }],
+  "delegation": {
+    "max_depth": 3,
+    "allow_ephemeral_grants": true
+  },
+  "protocols": {
+    "mcp": {"header": "X-AIP-Token"},
+    "a2a": {"agent_card_field": "aip_identity"}
+  },
+  "document_signature": "<Ed25519 over RFC 8785>",
+  "expires": "2026-06-22T00:00:00Z"
+}
+\end{lstlisting}
+\end{figure}
+
+Identity documents MUST include a \texttt{document\_signature} field: an Ed25519 signature computed over the RFC~8785~\citep{rfc8785} canonical form of the document with the \texttt{document\_signature} field excluded from the input. This self-signature provides content integrity independent of transport security. Even if the hosting domain is compromised (DNS hijack, CDN poisoning), an attacker cannot forge a valid identity document without the corresponding private key. Verifiers MUST check the document signature before trusting any fields.
+
+\paragraph{Version compatibility.} Implementations parse the \texttt{aip} field as a semver \texttt{major.minor} string. Documents with a higher major version than the implementation supports MUST be rejected. Unknown fields MUST be ignored, enabling forward-compatible extension through minor version increments.
 
 \subsection{Invocation-Bound Capability Tokens}
 \label{sec:ibct}
-TODO
+
+The core contribution of \aip{} is the \ibct{}: a single token that fuses identity, attenuated authorization, and provenance into an append-only chain. An \ibct{} evolves through three block types as delegation proceeds.
+
+\paragraph{Block 0 (Authority).} The root block is signed by the human or system that initiates the delegation chain. It declares the root identity, initial capability scopes, a budget ceiling, the maximum delegation depth, and an expiry timestamp. This block establishes the ceiling of authority for the entire chain.
+
+\paragraph{Block N (Delegation).} Each intermediary agent appends a delegation block, signed with its own key. A delegation block names the delegator and delegatee, attenuates scope (narrowing capabilities from those granted by the parent block), and includes a mandatory \texttt{context} field describing the purpose of the delegation. Scope attenuation is cryptographically enforced: a delegation block that attempts to widen any capability beyond its parent block fails verification.
+
+\paragraph{Block N+1 (Completion).} When work finishes, the executing agent may append a completion block recording the result hash, verification status, resource consumption, and cost. Completion blocks are optional; their trust semantics are detailed in Section~\ref{sec:completion}.
+
+A completed \ibct{} answers five questions from a single artifact: Who authorized this action? Through which agents did the delegation flow? What constraints applied at each hop? What was the outcome? Was the outcome independently verified?
+
+\subsubsection{Wire Formats}
+
+\aip{} defines two wire formats that serve different deployment scenarios.
+
+\paragraph{Compact mode} uses a standard JWT with \texttt{alg: EdDSA} and \texttt{typ: aip+jwt}. The payload carries \aip{}-specific claims: \texttt{iss} (issuer identity), \texttt{sub} (subject identity), \texttt{scope} (capability array), \texttt{budget\_usd} (spending ceiling), \texttt{max\_depth} (set to 0 to prohibit further delegation), and standard \texttt{iat}/\texttt{exp} timestamps. Compact mode covers single-hop cases: one agent calling one \mcp{} tool server, or a human granting authority to a single agent. Any JWT library that supports EdDSA can create and verify compact tokens.
+
+\paragraph{Chained mode} uses the Biscuit token format~\citep{biscuit2024spec}. Each block is signed with an ephemeral Ed25519 key, and the append-only structure ensures that no party can remove or modify earlier blocks. Datalog policies in each block are evaluated together by the authorizer to produce an allow or deny decision. Chained mode is required for multi-hop delegation, cross-organization workflows, and any scenario that requires an audit trail of the full delegation chain.
+
+\paragraph{Mode detection and upgrade.} Receivers detect the wire format from the token header: \texttt{typ: aip+jwt} indicates compact mode; Biscuit magic bytes indicate chained mode. Upgrading from compact to chained mode requires re-issuance: the issuer creates a new chained token (Block~0) using the same key, mapping compact JWT claims to Biscuit authority facts according to Table~\ref{tab:claim-map}. The original compact token is not embedded; this is a new token issuance with equivalent authority.
+
+\begin{table}[t]
+\centering
+\caption{Compact-to-chained claim mapping. Each JWT claim maps to a Biscuit authority fact during token upgrade.}
+\label{tab:claim-map}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{JWT Claim} & \textbf{Biscuit Fact} \\
+\midrule
+\texttt{iss} & \texttt{identity(\$iss)} \\
+\texttt{sub} & \texttt{delegate(\$sub)} \\
+\texttt{scope[i]} & \texttt{right(\$scope\_item)} \\
+\texttt{budget\_usd} & \texttt{budget(\$budget\_usd)} \\
+\texttt{max\_depth} & \texttt{max\_depth(\$max\_depth)} \\
+\texttt{exp} & \texttt{expires(\$exp)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:delegation-chain} illustrates a three-hop chained token with scope narrowing at each delegation step and a completion block at the end.
+
+\begin{figure}[t]
+\begin{lstlisting}[style=protocol,caption={Three-hop delegation chain showing scope narrowing. Each delegation block attenuates capabilities from its parent. The completion block records the outcome.},label={fig:delegation-chain}]
+Block 0 (Authority) -- signed by root
+  identity: aip:web:acme.dev/orchestrator
+  scope:    [tool:*, delegate:*, budget:5.00]
+  max_depth: 3
+  expires:  2026-03-22T12:00:00Z
+
+Block 1 (Delegation) -- signed by orchestrator
+  delegator: aip:web:acme.dev/orchestrator
+  delegate:  aip:web:acme.dev/research-analyst
+  scope:     [tool:search, tool:browse, budget:0.50]
+  context:   "research subtask for query X"
+
+Block 2 (Delegation) -- signed by research-analyst
+  delegator: aip:web:acme.dev/research-analyst
+  delegate:  aip:key:ed25519:z6Mkf...
+  scope:     [tool:search, budget:0.10]
+  context:   "specific search query"
+
+Block 3 (Completion) -- signed by ephemeral agent
+  status:      completed
+  result_hash: sha256:e3b0c442...
+  cost_usd:    0.03
+  tokens_used: 1200
+\end{lstlisting}
+\end{figure}
 
 \subsection{Completion Blocks and Trust Model}
 \label{sec:completion}
-TODO
+
+Completion blocks are signed by the executing agent, which is the party whose work is being reported. This means completion blocks are \textbf{self-reported claims}, not independently verified proofs. Two properties hold by construction: the block is \textit{tamper-evident} (any modification after signing is detectable) and \textit{attribution-bound} (the signature proves which agent made the claim, so a fraudulent report is attributable). However, the executing agent could misrepresent the result hash or cost without detection by the cryptographic layer alone.
+
+\aip{} defines three trust escalation levels for completion blocks:
+
+\begin{enumerate}[leftmargin=*,nosep]
+  \item \textbf{Self-reported (default).} The executing agent reports its own results. Sufficient for internal, trusted environments where agents operate under a single organization's control.
+  \item \textbf{Counter-signed.} The delegator (parent agent) independently verifies the result and appends a counter-signature block attesting to correctness. This adds one block to the chain containing the delegator's identity and a verification flag.
+  \item \textbf{Third-party attested.} An external verifier (an \ldp{} peer verification node~\citep{prakash2025ldp}, a human reviewer, or an audit service) signs an attestation block. The \texttt{verification\_status} field maps directly to \ldp{}'s verification status enum, enabling seamless provenance bridging between the two protocols.
+\end{enumerate}
+
+Consumers of completion blocks SHOULD inspect the \texttt{verification\_status} field and weight trust accordingly. A \texttt{peer\_verified} or \texttt{tool\_verified} completion block carries more evidential weight than an unverified self-report.
 
 \subsection{Budget Semantics}
 \label{sec:budget}
-TODO
+
+Budget values in \ibct{}s are expressed as integer cents. This choice is forced by the Biscuit Datalog engine, which has no floating-point type. A budget of \$0.50 is encoded as \texttt{budget(50)}.
+
+Budget fields represent \textbf{per-token authorization ceilings}, not running balances. When Agent~A delegates to Agent~B with \texttt{budget:50}, Agent~A asserts that B is authorized to spend up to 50 cents on this specific task. Agent~A is responsible for partitioning its own budget ceiling across sub-delegations. At invocation time, the verifier (\mcp{} server, \atoa{} receiver) checks that the declared budget in the presented token is non-negative; it does not track cumulative spend across invocations. At completion time, the completion block records actual \texttt{cost\_usd} for audit, not enforcement.
+
+Aggregate spend enforcement is the responsibility of the runtime (\eg{}, an orchestration platform's existing cost-tracking subsystem), not the token. The analogy is a credit card: the \ibct{} authorizes spending up to a ceiling, the merchant (verifier) checks the limit, but the bank (runtime) tracks the running balance.
 
 \subsection{Policy Profiles}
 \label{sec:policy}
-TODO
+
+Datalog policies in chained-mode tokens use one of three profiles, ordered by increasing expressiveness and complexity.
+
+\paragraph{Simple profile.} Users specify parameter values (tool allowlist, budget ceiling, maximum depth, expiry) and the library generates canonical Datalog checks. The four canonical templates are normative; implementations MUST generate exactly these patterns to ensure cross-implementation interoperability:
+
+\begin{lstlisting}[style=protocol]
+check if tool($t), ["search","browse"].contains($t);
+check if budget($b), $b <= 50;
+check if depth($d), $d <= 3;
+check if time($t), $t <= 2026-03-22T12:00:00Z;
+\end{lstlisting}
+
+No Datalog knowledge is required from the user. The Simple profile covers the majority of single-organization delegation scenarios.
+
+\paragraph{Standard profile.} A curated subset of Datalog that permits conjunctive conditions and set membership tests but prohibits recursion and unbounded evaluation. Example policies include trust-domain restrictions (\texttt{check if delegator(\$d), trust\_domain(\$d, \$dom), ["internal"].contains(\$dom)}) and conditional tool access based on delegator attributes.
+
+\paragraph{Advanced profile.} Full Biscuit Datalog with an evaluation depth limit of 1,000 iterations. This profile supports recursive policy rules, cross-block fact derivation, and arbitrary constraint combinations. It is opt-in and intended for enterprise deployments with complex governance requirements. Verifiers that do not support the Advanced profile MUST reject tokens containing non-Standard Datalog rather than silently ignoring policy blocks.
 
 \subsection{Protocol Bindings}
 \label{sec:bindings}
-TODO
+
+\aip{} defines concrete bindings for three transport protocols, ensuring that a single identity and token format works across the agent ecosystem.
+
+\paragraph{\mcp{} binding.} Clients include the \ibct{} in the \texttt{X-AIP-Token} HTTP header on every tool call. The server performs five verification steps: (1)~extract the token from the header (or fetch via \texttt{X-AIP-Token-Ref} for token-by-reference), (2)~resolve the issuer's identity document and verify all signatures, (3)~evaluate Datalog policies against the requested tool, (4)~for chained tokens, verify delegation depth, budget ceiling, and expiry at each block, and (5)~inject the verified identity into the request context for use by the tool implementation. \mcp{} servers declare \texttt{require\_aip: true} in their identity document to reject anonymous calls. Nine structured error codes distinguish authentication failures (HTTP~401: \texttt{aip\_token\_missing}, \texttt{aip\_token\_malformed}, \texttt{aip\_signature\_invalid}, \texttt{aip\_identity\_unresolvable}, \texttt{aip\_token\_expired}, \texttt{aip\_key\_revoked}) from authorization failures (HTTP~403: \texttt{aip\_scope\_insufficient}, \texttt{aip\_budget\_exceeded}, \texttt{aip\_depth\_exceeded}).
+
+\paragraph{\atoa{} binding.} Agents advertise their \aip{} identity through the \texttt{aip\_identity} field in the \atoa{} agent card~\citep{google2025a2a}, which includes both the \aip{} identifier and a URL to the identity document. When submitting a task, the caller places the \ibct{} (with a delegation block appended for the receiving agent) in the \texttt{aip\_token} field of the task metadata. The receiver verifies the full chain, from root authority through all intermediate delegations to the scope granted for its task, and may further delegate if the remaining depth permits.
+
+\paragraph{HTTP binding.} For generic HTTP APIs, the token is carried in the \texttt{Authorization} header using the \texttt{AIP} scheme: \texttt{Authorization: AIP <token>}. APIs that do not understand the \texttt{AIP} scheme ignore the header. For tokens exceeding 4\,KB (deep chains with complex policies), implementations MAY use token-by-reference via the \texttt{X-AIP-Token-Ref} header, which contains an HTTPS URL from which the receiver fetches the full self-authenticating token chain.
 
 \subsection{Delegation Rules}
 \label{sec:delegation}
-TODO
+
+Six rules govern how \ibct{}s propagate through delegation chains.
+
+\textbf{Scope attenuation only.} Each delegation block MUST be a subset of its parent's capabilities. A block that attempts to widen any scope, increase the budget, or extend the expiry fails cryptographic verification. This is enforced by the Biscuit authorizer, which evaluates all blocks together and rejects any fact that contradicts an earlier attenuation.
+
+\textbf{Bounded depth.} Block~0 declares a \texttt{max\_depth} value (default:~3). Delegation beyond this depth is rejected. The depth counter represents the maximum number of delegation blocks permitted, not the number of hops taken so far.
+
+\textbf{Non-empty context.} Every delegation block MUST include a non-empty \texttt{context} field describing why the delegation is occurring. Verifiers MUST reject tokens with missing or empty context fields. This requirement exists for audit trail integrity: a completed \ibct{} should explain the purpose of each hop.
+
+\textbf{Ephemeral grants for sub-agents.} When an orchestrator spawns a short-lived sub-agent, it generates an Ed25519 keypair, assigns the sub-agent an \texttt{aip:key} identity, and appends a delegation block with narrowed scope and a short TTL (typically minutes). The sub-agent uses the token for its work; the token auto-expires. No DNS registration is needed.
+
+\textbf{Key rotation.} DNS-based identities support zero-downtime rotation through overlapping validity windows. The identity document lists multiple keys with \texttt{valid\_from} and \texttt{valid\_until} timestamps; tokens signed with any currently-valid key are accepted. Self-certifying identities do not support rotation: the key is the identity, so rotation means creating a new identity.
+
+\textbf{Revocation and mutual authentication.} \aip{} v1 prefers short-lived tokens (under one hour) over revocation infrastructure, following the lesson from X.509 that revocation checking is the hardest part to get right and the first part to fail. For high-security scenarios, identity documents MAY declare a CRL endpoint. Mutual authentication in v1 uses DNS-based TLS verification: the caller resolves the receiver's identity document before sending and verifies that the TLS certificate matches the domain. Mutual authentication for self-certifying identities requires a challenge-response sub-protocol that is deferred to v2.
 
 \section{Implementation}
 \label{sec:impl}
