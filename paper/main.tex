@@ -1,0 +1,185 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── arXiv-compatible packages ──────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{natbib}
+\usepackage{authblk}
+\usepackage{float}
+\usepackage{multirow}
+\usepackage{tabularx}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!70!black,
+  citecolor=blue!70!black,
+  urlcolor=blue!70!black,
+}
+
+% ── Listings style ─────────────────────────────────────────────────────
+\lstdefinestyle{protocol}{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!5},
+  columns=fullflexible,
+  keepspaces=true,
+  numbers=none,
+  xleftmargin=3pt,
+  xrightmargin=3pt,
+}
+
+% ── AIP Macros ────────────────────────────────────────────────────────
+\newcommand{\aip}{\textsc{AIP}}
+\newcommand{\ibct}{\textsc{IBCT}}
+\newcommand{\ldp}{\textsc{LDP}}
+\newcommand{\dci}{\textsc{DCI}}
+\newcommand{\atoa}{\textsc{A2A}}
+\newcommand{\mcp}{\textsc{MCP}}
+\newcommand{\jamjet}{\textsc{JamJet}}
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\cf}{\textit{cf.}}
+\newcommand{\etal}{\textit{et al.}}
+
+% ══════════════════════════════════════════════════════════════════════
+% DOCUMENT
+% ══════════════════════════════════════════════════════════════════════
+
+\begin{document}
+
+\title{Invocation-Bound Capability Tokens:\\Verifiable Identity for AI Agent Delegation Across MCP and A2A}
+
+\author{Sunil Prakash\\
+\small Independent Researcher\\
+\small \url{https://orcid.org/0000-0002-6670-1155}\\
+\small \texttt{https://github.com/sunilp/aip}
+}
+\date{}
+
+\maketitle
+
+\begin{abstract}
+\textbf{TODO: Write after benchmarks are complete.}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+TODO
+
+\section{Related Work and Gap Analysis}
+\label{sec:related}
+
+\subsection{W3C Decentralized Identifiers}
+\label{sec:did}
+TODO
+
+\subsection{OAuth 2.0/2.1}
+\label{sec:oauth}
+TODO
+
+\subsection{Macaroons}
+\label{sec:macaroons}
+TODO
+
+\subsection{UCAN}
+\label{sec:ucan}
+TODO
+
+\subsection{Biscuit}
+\label{sec:biscuit}
+TODO
+
+\subsection{SPIFFE/SPIRE}
+\label{sec:spiffe}
+TODO
+
+\subsection{IETF Drafts}
+\label{sec:ietf}
+TODO
+
+\subsection{Gap Summary}
+\label{sec:gap}
+TODO
+
+\subsection{Relationship to Biscuit}
+\label{sec:biscuit-delta}
+TODO
+
+\section{The Agent Identity Protocol}
+\label{sec:protocol}
+
+\subsection{Identity Scheme}
+\label{sec:identity}
+TODO
+
+\subsection{Invocation-Bound Capability Tokens}
+\label{sec:ibct}
+TODO
+
+\subsection{Completion Blocks and Trust Model}
+\label{sec:completion}
+TODO
+
+\subsection{Budget Semantics}
+\label{sec:budget}
+TODO
+
+\subsection{Policy Profiles}
+\label{sec:policy}
+TODO
+
+\subsection{Protocol Bindings}
+\label{sec:bindings}
+TODO
+
+\subsection{Delegation Rules}
+\label{sec:delegation}
+TODO
+
+\section{Implementation}
+\label{sec:impl}
+TODO
+
+\section{Evaluation}
+\label{sec:eval}
+
+\subsection{Hypotheses}
+\label{sec:hypotheses}
+TODO
+
+\subsection{Microbenchmarks}
+\label{sec:microbench}
+TODO
+
+\subsection{End-to-End Delegation Scenario}
+\label{sec:e2e}
+TODO
+
+\subsection{Evidence Summary}
+\label{sec:evidence}
+TODO
+
+\section{Limitations}
+\label{sec:limitations}
+TODO
+
+\section{Conclusion}
+\label{sec:conclusion}
+TODO
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
