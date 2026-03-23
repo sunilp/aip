@@ -81,41 +81,102 @@ TODO
 \section{Related Work and Gap Analysis}
 \label{sec:related}
 
+Agent identity sits at the intersection of decentralized identity, capability-based authorization, and service mesh security. This section surveys seven categories of prior work, identifies the specific property each fails to provide, and synthesizes the gap that \aip{} addresses. Table~\ref{tab:comparison} summarizes the analysis across seven dimensions.
+
 \subsection{W3C Decentralized Identifiers}
 \label{sec:did}
-TODO
+
+W3C Decentralized Identifiers (DIDs)~\citep{w3c2026did} provide self-sovereign, blockchain-anchored identity without reliance on centralized registries. DID v1.1 reached Candidate Recommendation in March 2026, yet adoption remains disappointing. Among early adopters, 34\% of users experienced lockout within six months due to lost or mismanaged cryptographic keys, and 62\% of non-technical users reported confusion with wallet management. Block's abandonment of its ``Web5'' DID initiative in late 2024 signaled that even well-funded efforts could not overcome these friction points.
+
+For AI agents, the UX failures are irrelevant: agents are software, and key management is a trivial engineering problem rather than a human factors challenge. However, the structural problems persist. Most DID methods depend on blockchain infrastructure for resolution, introducing latency, cost, and availability concerns that are incompatible with high-throughput agent delegation. Trust bootstrapping remains circular: a DID is self-certifying, but verifiers need an external reason to trust it, which reintroduces the centralized trust anchors DIDs were designed to eliminate. Only 37\% of jurisdictions have clear regulatory frameworks for blockchain-based identity, creating compliance uncertainty for enterprise deployments.
 
 \subsection{OAuth 2.0/2.1}
 \label{sec:oauth}
-TODO
+
+OAuth 2.1~\citep{ietf2024oauth21} is the most widely deployed authorization framework in production systems. The \mcp{} specification adopted OAuth 2.1 with PKCE as its authorization mechanism in 2026~\citep{anthropic2024mcp}, and \atoa{} supports RFC 8693 token exchange~\citep{google2025a2a}. For human-to-service authentication within a single trust domain, OAuth remains the right choice.
+
+Three structural limitations prevent OAuth from serving as the agent identity layer. First, every trust domain requires its own authorization server, and there is no mechanism for cross-domain token verification without pre-established federation agreements. In an open multi-agent ecosystem where agents from different organizations collaborate dynamically, this prerequisite cannot be met. Second, OAuth tokens are opaque to intermediaries: when Agent A delegates to Agent B via token exchange, the resulting token carries no record of the delegation chain, and B's downstream calls lose the context of A's original authorization. Third, OAuth provides no holder-side scope attenuation. Only the authorization server can narrow scopes at issuance time. A token holder cannot further restrict its own permissions before passing the token downstream, which is precisely what safe agent delegation requires.
 
 \subsection{Macaroons}
 \label{sec:macaroons}
-TODO
+
+Macaroons~\citep{birgisson2014macaroons} introduced holder attenuation as a first-class primitive: a token holder can append caveats that further restrict the token's authority before passing it downstream, without coordinating with the issuer. This insight is foundational. Google DeepMind's ``Intelligent AI Delegation'' paper~\citep{deepmind2026delegation} builds directly on macaroons, proposing Delegation Capability Tokens (DCTs) that encode attenuated authority chains for agent-to-agent delegation.
+
+DeepMind's validation lends credibility to the attenuation-first design philosophy, but the underlying cryptographic model has three limitations that prevent production deployment. First, macaroons use HMAC-based verification, which requires the verifier to possess the root secret. This creates a single point of compromise: any verifier that can validate a token also holds the key material to forge one. Second, macaroon caveats are simple key-value predicates, insufficient for expressing complex delegation policies such as ``allow read access to financial data only during business hours and only for queries under \$10,000.'' Third, while DeepMind's DCT proposal is conceptually sound, it remains a position paper with no shipped protocol, no token format specification, and no reference implementation.
 
 \subsection{UCAN}
 \label{sec:ucan}
-TODO
+
+User Controlled Authorization Networks (UCANs)~\citep{ucan2024spec} implement decentralized delegation via nested JWTs with DID-based identity. Each delegation step wraps the parent JWT inside a new one, creating a verifiable chain of authority reductions. The philosophy is sound: users (not servers) control who gets what authority, and delegation is cryptographically traceable without centralized coordination.
+
+Four limitations prevent UCANs from serving as the agent identity layer. First, DID dependency inherits the full complexity of DID resolution (Section~\ref{sec:did}), including blockchain infrastructure requirements and circular trust bootstrapping. Second, nested JWT encoding creates token bloat that grows quadratically with delegation depth: a five-hop chain requires five nested signatures, each wrapping the full payload of the previous hop. Third, the UCAN ecosystem is JS-centric and tightly coupled to web3 storage platforms like Storacha, limiting adoption in enterprise environments running Python, Java, or Rust agent stacks. Fourth, UCAN capabilities are expressed as flat URIs (\texttt{msg/send}, \texttt{file/read}), which lack the expressiveness to encode conditional policies, budget constraints, or temporal restrictions that agent delegation demands.
 
 \subsection{Biscuit}
 \label{sec:biscuit}
-TODO
+
+Biscuit~\citep{biscuit2024spec} is an authorization token format from the Eclipse Foundation that combines Ed25519 public-key signatures, a Datalog policy language, and an append-only block structure. Each block in a Biscuit token is signed by a new ephemeral key, and any holder can append a block that further restricts (but never expands) the token's authority. The Datalog authorizer evaluates all blocks together against a set of policy rules, producing an allow/deny decision. Among existing solutions, Biscuit gets the most right: public-key verification eliminates the shared-secret problem of macaroons, Datalog provides expressive policy evaluation, and append-only blocks naturally model delegation chains.
+
+Biscuit is a token format, not an identity protocol. It defines no identity resolution mechanism (how to discover an agent's public key from its name), no protocol bindings (how to transport tokens over \mcp{}, \atoa{}, or HTTP), and no provenance concept (how to bind the outcome of a delegated action back to the authorization chain). These gaps mean that two independent deployments using raw Biscuit tokens have no interoperability path. Section~\ref{sec:biscuit-delta} details precisely what \aip{} adds on top of Biscuit's cryptographic foundation.
 
 \subsection{SPIFFE/SPIRE}
 \label{sec:spiffe}
-TODO
+
+The Secure Production Identity Framework for Everyone (SPIFFE)~\citep{spiffe2024} provides workload identity in cloud-native environments. SPIRE (the SPIFFE Runtime Environment) issues X.509 or JWT SVIDs (SPIFFE Verifiable Identity Documents) to workloads based on attestation of their runtime environment. Production deployments at Uber, Stripe, and Netflix demonstrate that SPIFFE scales to tens of thousands of workloads with sub-second identity verification.
+
+Three factors limit SPIFFE's applicability to agent identity. First, SPIRE requires dedicated infrastructure (attestation nodes, registration servers, certificate authorities) that creates a significant deployment burden for organizations that simply want to add identity to their agent workflows. Second, X.509 certificate issuance introduces latency that is incompatible with ephemeral agent creation: an orchestrator that spawns a specialist agent for a single tool call cannot wait for certificate signing and distribution. Third, SPIFFE addresses workload identity within infrastructure boundaries but provides no mechanism for cross-protocol identity flow. A SPIFFE SVID issued to an agent calling an \mcp{} tool server has no defined mapping to the \atoa{} agent card that the same agent presents when collaborating with peers.
 
 \subsection{IETF Drafts}
 \label{sec:ietf}
-TODO
+
+Four IETF Internet-Drafts published in early 2026 address agent identity, reflecting growing recognition of the problem within the standards community. The AIMS draft~\citep{ietf2026aims} (draft-klrc-aiagent-auth) proposes a conceptual model composing WIMSE, SPIFFE, and OAuth into a unified agent authentication architecture, but its authorization section reads ``TODO Security,'' leaving the hardest problem unspecified. The WIMSE AI Agent Identity draft~\citep{ietf2026wimse} introduces a Dual-Identity Credential that binds an agent's identity to its owner's identity, solving the ``who controls this agent'' problem for two-party interactions, but provides no mechanism for multi-hop delegation where Agent A authorizes Agent B, which then delegates to Agent C.
+
+The Agentic JWT draft~\citep{ietf2026agenticjwt} extends standard JWTs with agent-specific claims (agent identifier, owner binding, task context), but JWTs are immutable after signing. A delegatee cannot attenuate its received authority before passing it downstream without minting an entirely new token, which breaks the cryptographic chain linking the delegatee back to the original authorization. SCIM for agents~\citep{ietf2026scim} addresses provisioning lifecycle (creation, suspension, deprovisioning) rather than runtime authorization, making it complementary to rather than competitive with \aip{}. Collectively, these drafts define fragments of the solution space but leave the core problem unsolved: no draft provides a concrete token format with holder-attenuable delegation, cross-protocol bindings, and provenance tracking.
 
 \subsection{Gap Summary}
 \label{sec:gap}
-TODO
+
+The preceding review reveals that agent identity requires seven properties that no existing solution fully provides:
+
+\begin{enumerate}[leftmargin=*,nosep]
+  \item \textbf{Public-key verification without shared secrets.} Verifiers must validate tokens without possessing root key material. Macaroons and OAuth fail this requirement.
+  \item \textbf{Holder-side scope attenuation.} A token holder must be able to narrow its own authority before delegating, without contacting the issuer. OAuth and standard JWTs fail this requirement.
+  \item \textbf{Expressive policy language.} Delegation constraints must express conditions beyond flat scopes or key-value pairs (temporal bounds, budget limits, tool allowlists with parameters). Macaroons and UCAN fail this requirement.
+  \item \textbf{Cross-protocol identity flow.} A single identity must be verifiable across \mcp{} tool calls, \atoa{} agent collaboration, and HTTP API requests. Every surveyed solution addresses at most one transport.
+  \item \textbf{Provenance binding.} The outcome of a delegated action must be cryptographically bound to the authorization chain that permitted it. No surveyed solution provides this.
+  \item \textbf{No blockchain or heavy infrastructure dependency.} The solution must work without blockchain networks or dedicated infrastructure clusters. This rules out most DID methods and SPIFFE/SPIRE for lightweight deployments.
+  \item \textbf{Agent lifecycle awareness.} Tokens must accommodate ephemeral agents with short-lived grants and bounded delegation depth, not just long-lived service accounts. OAuth and SPIFFE assume persistent identities.
+\end{enumerate}
+
+Table~\ref{tab:comparison} maps each surveyed approach against these seven properties. No existing solution provides more than four. \aip{} is designed to satisfy all seven.
+
+\begin{table*}[t]
+\centering
+\caption{Seven-dimension comparison of identity and authorization approaches for AI agents. \checkmark{} = fully supported, $\sim$ = partially supported, $\times$ = not supported.}
+\label{tab:comparison}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\textbf{Approach} & \textbf{Public-Key} & \textbf{Holder} & \textbf{Expressive} & \textbf{Cross-} & \textbf{Provenance} & \textbf{No Blockchain/} & \textbf{Lifecycle} \\
+ & \textbf{Verif.} & \textbf{Attenuation} & \textbf{Policy} & \textbf{Protocol} & \textbf{Binding} & \textbf{Heavy Infra} & \textbf{Awareness} \\
+\midrule
+W3C DIDs        & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\
+OAuth 2.0/2.1   & $\sim$     & $\times$ & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ \\
+Macaroons       & $\times$   & \checkmark & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ \\
+UCAN            & \checkmark & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ \\
+Biscuit         & \checkmark & \checkmark & \checkmark & $\times$ & $\times$ & \checkmark & $\times$ \\
+SPIFFE/SPIRE    & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & $\sim$ \\
+IETF Drafts     & $\sim$     & $\times$ & $\times$ & $\times$ & $\times$ & $\sim$ & $\sim$ \\
+\midrule
+\textbf{\aip{}} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \subsection{Relationship to Biscuit}
 \label{sec:biscuit-delta}
-TODO
+
+\aip{} uses Biscuit~\citep{biscuit2024spec} as the cryptographic primitive for its chained token mode, in the same way that SSH uses Ed25519 as its signature algorithm. Biscuit provides the append-only block structure, Ed25519 signature chaining, and Datalog policy evaluation that form \aip{}'s verification core. What \aip{} adds is everything required to turn a token format into an identity protocol: (1) an identity resolution scheme (\texttt{aip:web} for DNS-anchored discovery, \texttt{aip:key} for self-certifying ephemeral agents), (2) protocol bindings that define how tokens flow over \mcp{}, \atoa{}, and HTTP with standardized headers and error codes, (3) completion blocks that bind the outcome of a delegated action back to the authorization chain, creating a verifiable provenance record, (4) a policy profile system (Simple, Standard, Advanced) that makes Datalog accessible to non-expert users while preserving full expressiveness for advanced deployments, and (5) a compact JWT mode for single-hop cases where the overhead of Biscuit's block structure is unnecessary. This relationship means \aip{} inherits Biscuit's formal security properties (proven attenuation guarantees, bounded Datalog evaluation) while addressing the protocol-level gaps that prevent raw Biscuit tokens from interoperating across agent ecosystems.
 
 \section{The Agent Identity Protocol}
 \label{sec:protocol}
