@@ -1,0 +1,88 @@
+{
+  "experiment": "adversarial_security",
+  "iterations_per_attack": 100,
+  "chained_available": true,
+  "attacks": [
+    {
+      "name": "scope_widening",
+      "description": "Agent attempts to invoke tool:email when only tool:search was delegated",
+      "attempts": 100,
+      "aip_rejected": 100,
+      "aip_rejection_rate": 1.0,
+      "unsigned_rejected": 0,
+      "unsigned_rejection_rate": 0.0,
+      "jwt_rejected": 100,
+      "jwt_rejection_rate": 1.0,
+      "aip_unique_defense": "Chained Datalog checks enforce scope at every delegation hop"
+    },
+    {
+      "name": "depth_violation",
+      "description": "Second delegation attempted when max_depth=1 (only one hop allowed)",
+      "attempts": 100,
+      "aip_rejected": 100,
+      "aip_rejection_rate": 1.0,
+      "unsigned_rejected": 0,
+      "unsigned_rejection_rate": 0.0,
+      "jwt_rejected": 0,
+      "jwt_rejection_rate": 0.0,
+      "aip_unique_defense": "max_depth in authority block prevents unbounded delegation"
+    },
+    {
+      "name": "expired_token_replay",
+      "description": "Token created with exp=now-60s is presented for verification",
+      "attempts": 100,
+      "aip_rejected": 100,
+      "aip_rejection_rate": 1.0,
+      "unsigned_rejected": 0,
+      "unsigned_rejection_rate": 0.0,
+      "jwt_rejected": 100,
+      "jwt_rejection_rate": 1.0,
+      "aip_unique_defense": "Both compact (JWT exp) and chained (Datalog time check) enforce expiry"
+    },
+    {
+      "name": "wrong_key_verification",
+      "description": "Token signed by key A, verified against unrelated key B",
+      "attempts": 100,
+      "aip_rejected": 100,
+      "aip_rejection_rate": 1.0,
+      "unsigned_rejected": 0,
+      "unsigned_rejection_rate": 0.0,
+      "jwt_rejected": 100,
+      "jwt_rejection_rate": 1.0,
+      "aip_unique_defense": "Ed25519 signature binding at every layer (compact JWT + chained Biscuit)"
+    },
+    {
+      "name": "empty_context_audit_evasion",
+      "description": "Delegation with empty context string to evade audit trail",
+      "attempts": 100,
+      "aip_rejected": 100,
+      "aip_rejection_rate": 1.0,
+      "unsigned_rejected": 0,
+      "unsigned_rejection_rate": 0.0,
+      "jwt_rejected": 0,
+      "jwt_rejection_rate": 0.0,
+      "aip_unique_defense": "Mandatory non-empty context on every delegation enforces audit provenance"
+    },
+    {
+      "name": "tampered_token_forgery",
+      "description": "Base64 token tampered (character flip) then verified -- tests chain integrity",
+      "attempts": 100,
+      "aip_rejected": 100,
+      "aip_rejection_rate": 1.0,
+      "unsigned_rejected": 0,
+      "unsigned_rejection_rate": 0.0,
+      "jwt_rejected": 100,
+      "jwt_rejection_rate": 1.0,
+      "aip_unique_defense": "Biscuit signature covers every block; any tampering is detected"
+    }
+  ],
+  "summary": {
+    "total_attacks": 600,
+    "aip_total_rejected": 600,
+    "aip_overall_rate": 1.0,
+    "unique_to_aip": [
+      "depth_violation",
+      "empty_context_audit_evasion"
+    ]
+  }
+}
