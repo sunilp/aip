@@ -61,17 +61,14 @@
 
 \title{Invocation-Bound Capability Tokens:\\Verifiable Identity for AI Agent Delegation Across MCP and A2A}
 
-\author{Sunil Prakash\\
-\small Independent Researcher\\
-\small \url{https://orcid.org/0000-0002-6670-1155}\\
-\small \texttt{https://github.com/sunilp/aip}
-}
+\author[1]{Sunil Prakash}
+\affil[1]{Indian School of Business, India \\ \textit{sunil\_prakash\_pgpmax2026@isb.edu}}
 \date{}
 
 \maketitle
 
 \begin{abstract}
-AI agents increasingly call tools via the Model Context Protocol (\mcp{}) and delegate to other agents via Agent-to-Agent (\atoa{}), yet neither protocol verifies agent identity. A scan of approximately 2,000 \mcp{} servers found all lacked authentication. Existing approaches fail for three reasons: agents are ephemeral (ruling out infrastructure-heavy solutions like SPIFFE), delegation is dynamic with holder-side scope attenuation (ruling out OAuth and standard JWTs), and identity must flow across protocol boundaries (ruling out single-transport solutions). We introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that fuses identity, attenuated authorization, and provenance binding into a single append-only token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop cases) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation). We provide reference implementations in Python (827 LOC) and Rust (1,214 LOC) with 78 tests and full cross-language interoperability. Compact mode verification takes 0.049\,ms (Rust) and 0.189\,ms (Python). Chained tokens scale linearly at 340--380 bytes per delegation block, with sub-millisecond verification even at depth~5. In a 2-hop delegation scenario, \aip{} adds 0.39\,ms of auth overhead compared to 20\,ms for simulated OAuth token exchange, reducing authentication cost by 98\%. \aip{} completes the third layer of an agent trust stack alongside \ldp{} (provenance) and \dci{} (reasoning).
+AI agents increasingly call tools via the Model Context Protocol (\mcp{}) and delegate to other agents via Agent-to-Agent (\atoa{}), yet neither protocol verifies agent identity. A scan of approximately 2,000 \mcp{} servers found all lacked authentication. No single existing protocol combines all of: ephemeral agent identity (ruling out infrastructure-heavy solutions like SPIFFE), holder-side scope attenuation without contacting the issuer (ruling out OAuth and standard JWTs), and cross-protocol identity flow across MCP, A2A, and HTTP (ruling out single-transport solutions). We introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that fuses identity, attenuated authorization, and provenance binding into a single append-only token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop cases) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation). We provide reference implementations in Python (827 LOC) and Rust (1,214 LOC) with 78 tests and full cross-language interoperability. Compact mode verification takes 0.049\,ms (Rust) and 0.189\,ms (Python). Chained tokens scale linearly at 340--380 bytes per delegation block, with sub-millisecond verification even at depth~5. In a 2-hop delegation scenario, \aip{} adds 0.39\,ms of auth overhead compared to 20\,ms for simulated OAuth token exchange, reducing authentication cost by 98\%. \aip{} addresses the identity layer of an agent trust stack alongside \ldp{} (provenance) and \dci{} (reasoning).
 \end{abstract}
 
 \section{Introduction}
@@ -79,20 +76,20 @@ AI agents increasingly call tools via the Model Context Protocol (\mcp{}) and de
 
 AI agents are acquiring the ability to act: calling tools, spending money, and delegating work to other agents. The two dominant protocols enabling this, the Model Context Protocol (\mcp{})~\citep{anthropic2024mcp} for tool invocation and Agent-to-Agent (\atoa{})~\citep{google2025a2a} for inter-agent collaboration, define how agents communicate but not who they are. \mcp{} adopted OAuth 2.1 as an optional authorization layer in 2026, yet a Knostic security scan~\citep{knostic2025scan} of approximately 2,000 \mcp{} servers found that every single one lacked authentication. \atoa{} agent cards contain self-declared identities with no attestation binding. When Agent~A delegates a task to Agent~B, no mechanism verifies A's authority, constrains B's scope, or records the delegation for audit.
 
-This gap is attracting attention. Google DeepMind's ``Intelligent AI Delegation'' paper~\citep{deepmind2026delegation} proposed Delegation Capability Tokens built on macaroons, validating the attenuation-first design philosophy but shipping no protocol or implementation. Four IETF Internet-Drafts published in early 2026 (AIMS~\citep{ietf2026aims}, WIMSE~\citep{ietf2026wimse}, Agentic JWT~\citep{ietf2026agenticjwt}, SCIM for agents~\citep{ietf2026scim}) address fragments of the problem. Mastercard's Verifiable Intent proposal~\citep{mastercard2025intent} targets agent commerce. The problem is recognized. The solution is not.
+This gap is attracting attention. Google DeepMind's ``Intelligent AI Delegation'' paper~\citep{deepmind2026delegation} proposed Delegation Capability Tokens built on macaroons, validating the attenuation-first design philosophy but shipping no protocol or implementation. Four IETF Internet-Drafts published in early 2026 (AIMS~\citep{ietf2026aims}, WIMSE~\citep{ietf2026wimse}, Agentic JWT~\citep{ietf2026agenticjwt}, SCIM for agents~\citep{ietf2026scim}) address fragments of the problem. Mastercard's Verifiable Intent proposal~\citep{mastercard2025intent} targets agent commerce. The problem is well recognized. Partial solutions abound, but no single protocol combines offline attenuable delegation, expressive chained policy, provenance-aware completion records, and transport bindings across MCP, A2A, and HTTP.
 
-Existing identity and authorization approaches each fail at least one requirement of agent delegation. OAuth 2.0/2.1~\citep{ietf2024oauth21} requires centralized authorization servers, produces opaque tokens with no delegation chain, and provides no holder-side scope attenuation. W3C DIDs~\citep{w3c2026did} introduce blockchain dependencies and circular trust bootstrapping. Macaroons~\citep{birgisson2014macaroons} use HMAC shared secrets that make every verifier a potential forger. UCANs~\citep{ucan2024spec} inherit DID complexity and suffer quadratic token bloat from nested JWTs. SPIFFE/SPIRE~\citep{spiffe2024} demands dedicated infrastructure incompatible with ephemeral agent creation. Biscuit~\citep{biscuit2024spec} gets the token format right but defines no identity resolution, no protocol bindings, and no provenance model. Agent identity requires seven properties (Section~\ref{sec:gap}); no existing solution provides more than four.
+Existing identity and authorization approaches each fail at least one requirement of agent delegation. OAuth 2.0/2.1~\citep{ietf2024oauth21} requires centralized authorization servers, produces opaque tokens with no delegation chain, and provides no holder-side scope attenuation. W3C DIDs~\citep{w3c2026did} introduce blockchain dependencies and circular trust bootstrapping. Macaroons~\citep{birgisson2014macaroons} use HMAC shared secrets that make every verifier a potential forger. UCANs~\citep{ucan2024spec} inherit DID complexity and suffer quadratic token bloat from nested JWTs. SPIFFE/SPIRE~\citep{spiffe2024} demands dedicated infrastructure incompatible with ephemeral agent creation. Biscuit~\citep{biscuit2024spec} gets the token format right but defines no identity resolution, no protocol bindings, and no provenance model. Agent identity requires seven properties (Section~\ref{sec:gap}); no single solution surveyed provides more than four.
 
 This paper makes two contributions. First, we introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that unifies identity, attenuated authorization, and provenance binding in a single evolvable token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop \mcp{} calls) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation chains with completion blocks). Second, we evaluate \aip{} with reference implementations in Python and Rust, demonstrating sub-millisecond verification for compact tokens (0.049\,ms Rust, 0.189\,ms Python), linear scaling of chained tokens at 340--380 bytes per delegation block, and 98\% lower auth overhead compared to simulated OAuth token exchange in a multi-hop scenario.
 
-\aip{} is the third layer of an agent trust stack. \ldp{}~\citep{prakash2025ldp} provides the provenance layer, tracking what agents produce and how reliably. \dci{}~\citep{prakash2025dci} provides the reasoning layer, structuring how agents deliberate. \aip{} provides the identity layer, establishing who agents are and what they are authorized to do. The three protocols are independently deployable but mutually reinforcing: \aip{} identity documents link to \ldp{} via the extensions field, and \ibct{} completion blocks link to provenance records via \texttt{ldp\_provenance\_id}.
+\aip{} addresses the identity layer of an agent trust stack. \ldp{}~\citep{prakash2025ldp} provides the provenance layer, tracking what agents produce and how reliably. \dci{}~\citep{prakash2025dci} provides the reasoning layer, structuring how agents deliberate. \aip{} provides the identity layer, establishing who agents are and what they are authorized to do. The three protocols are independently deployable but mutually reinforcing: \aip{} identity documents link to \ldp{} via the extensions field, and \ibct{} completion blocks link to provenance records via \texttt{ldp\_provenance\_id}.
 
-The remainder of this paper is organized as follows. Section~\ref{sec:related} surveys related work and identifies the seven-property gap. Section~\ref{sec:protocol} defines the \aip{} protocol. Section~\ref{sec:impl} describes the implementation. Section~\ref{sec:eval} evaluates performance and security. Section~\ref{sec:limitations} discusses limitations. Section~\ref{sec:conclusion} concludes.
+The remainder of this paper is organized as follows. Section~\ref{sec:related} surveys related work and identifies the seven-property gap. Section~\ref{sec:protocol} defines the \aip{} protocol. Section~\ref{sec:impl} describes the implementation. Section~\ref{sec:eval} evaluates performance and security. Section~\ref{sec:threat} presents the threat model. Section~\ref{sec:limitations} discusses limitations. Section~\ref{sec:conclusion} concludes.
 
 \section{Related Work and Gap Analysis}
 \label{sec:related}
 
-Agent identity sits at the intersection of decentralized identity, capability-based authorization, and service mesh security. This section surveys seven categories of prior work, identifies the specific property each fails to provide, and synthesizes the gap that \aip{} addresses. Table~\ref{tab:comparison} summarizes the analysis across seven dimensions.
+Agent identity sits at the intersection of decentralized identity, capability-based authorization, and service mesh security. This section surveys eleven categories of prior work, identifies the specific property each fails to provide, and synthesizes the gap that \aip{} addresses. Table~\ref{tab:comparison} summarizes the analysis across seven dimensions.
 
 \subsection{W3C Decentralized Identifiers}
 \label{sec:did}
@@ -129,10 +126,30 @@ SPIFFE~\citep{spiffe2024} provides workload identity in cloud-native environment
 
 Four IETF Internet-Drafts published in early 2026 address agent identity. AIMS~\citep{ietf2026aims} proposes a conceptual model composing WIMSE, SPIFFE, and OAuth, but its authorization section reads ``TODO Security.'' WIMSE~\citep{ietf2026wimse} introduces a Dual-Identity Credential binding agent identity to owner identity, solving two-party interactions but not multi-hop delegation. Agentic JWT~\citep{ietf2026agenticjwt} extends JWTs with agent-specific claims, but JWTs are immutable after signing, so a delegatee cannot attenuate authority without minting a new token that breaks the cryptographic chain. SCIM for agents~\citep{ietf2026scim} addresses provisioning lifecycle rather than runtime authorization. Collectively, these drafts define fragments of the solution space but no draft provides holder-attenuable delegation, cross-protocol bindings, and provenance tracking.
 
+\subsection{Agent Authorization Profile (AAP) for OAuth 2.0}
+\label{sec:aap}
+
+The Agent Authorization Profile (AAP)~\citep{ietf2026aap} extends OAuth 2.0 and JWT with structured claims for agent identity, task binding, capabilities, delegation chains, and oversight. Rather than introducing a new protocol, AAP profiles existing OAuth infrastructure, which lowers adoption barriers for organizations already invested in OAuth. AAP gets several things right: it defines agent-specific JWT claims, supports delegation chain representation, and reuses well-understood OAuth flows. Three limitations apply to the agent delegation use case. First, JWT-based tokens are immutable after signing, so a holder cannot attenuate authority offline without minting a new token that breaks the cryptographic chain. Second, AAP requires an OAuth authorization server for every trust domain, precluding lightweight cross-domain delegation. Third, AAP defines no cross-protocol bindings for MCP or A2A and no provenance or completion concept.
+
+\subsection{Transaction Tokens for Agents}
+\label{sec:txntokens}
+
+The IETF draft on Transaction Tokens for Agents~\citep{ietf2026txntokens} extends OAuth Transaction Tokens with \texttt{actor} and \texttt{principal} fields for agent context propagation across service boundaries. This approach solves an important problem: preserving the identity of the original principal as requests traverse multiple services within a trust domain. Two limitations prevent it from serving as a general agent delegation protocol. First, Transaction Tokens are designed for within-trust-domain chaining and do not address cross-domain delegation where no shared authorization server exists. Second, the specification defines no scope attenuation semantics (a downstream service receives the same authority as the upstream caller) and no completion or provenance binding.
+
+\subsection{Agent Identity and Discovery (AID)}
+\label{sec:aid}
+
+The Agent Identity and Discovery (AID) protocol~\citep{ietf2026aid} proposes DNS-first discovery using TXT records at \texttt{\_agent.<domain>}, with optional public-key attestation. AID addresses a complementary layer: discovery (``where is the agent?'') rather than authorization (``what can it do?''). Both AID and AIP use DNS as a trust anchor but at different protocol layers. AID could serve as the discovery mechanism that directs verifiers to an AIP identity document, making the two protocols composable rather than competing.
+
+\subsection{MCP Authorization (OAuth 2.1)}
+\label{sec:mcp-auth}
+
+The MCP specification now includes OAuth 2.1 with PKCE for protected MCP servers~\citep{anthropic2024mcp}, meaning MCP is no longer without an authentication story. AIP's positioning must be precise: MCP has client-to-server authentication via OAuth, but OAuth tokens carry no delegation chain, provide no holder-side scope attenuation, and include no provenance binding. In a multi-hop scenario where an orchestrator delegates to a specialist that calls an MCP tool, OAuth authenticates the final hop but provides no record of the authorization chain that led to it. AIP and MCP OAuth are complementary: OAuth authenticates the transport connection; AIP authenticates the delegation chain.
+
 \subsection{Gap Summary}
 \label{sec:gap}
 
-The preceding review reveals that agent identity requires seven properties that no existing solution fully provides:
+The preceding review reveals that agent identity requires seven properties that no single existing solution addresses all seven simultaneously:
 
 \begin{enumerate}[leftmargin=*,nosep]
   \item \textbf{Public-key verification} without shared secrets (macaroons, OAuth fail).
@@ -144,7 +161,7 @@ The preceding review reveals that agent identity requires seven properties that 
   \item \textbf{Agent lifecycle awareness} for ephemeral agents with short-lived grants (OAuth, SPIFFE fail).
 \end{enumerate}
 
-Table~\ref{tab:comparison} maps each surveyed approach against these seven properties. No existing solution provides more than four. \aip{} is designed to satisfy all seven.
+Table~\ref{tab:comparison} maps each surveyed approach against these seven properties. No single solution surveyed addresses more than four. \aip{} is designed to satisfy all seven.
 
 \begin{table*}[t]
 \centering
@@ -164,6 +181,9 @@ UCAN            & \checkmark & \checkmark & $\times$ & $\times$ & $\times$ & $\t
 Biscuit         & \checkmark & \checkmark & \checkmark & $\times$ & $\times$ & \checkmark & $\times$ \\
 SPIFFE/SPIRE    & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & $\sim$ \\
 IETF Drafts     & $\sim$     & $\times$ & $\times$ & $\times$ & $\times$ & $\sim$ & $\sim$ \\
+AAP (OAuth)     & $\sim$     & $\times$ & $\sim$   & $\times$ & $\times$ & \checkmark & $\sim$ \\
+Txn Tokens      & $\sim$     & $\times$ & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ \\
+AID             & $\sim$     & $\times$ & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ \\
 \midrule
 \textbf{\aip{}} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
 \bottomrule
@@ -457,6 +477,25 @@ We evaluate a 2-hop \mcp{} delegation scenario (orchestrator to specialist to to
 
 \textbf{H3 supported with caveats:} \aip{} 2-hop auth overhead is 0.39--2.3\,ms versus 20\,ms for simulated OAuth (10\,ms per hop). The structural claim (local verification avoids network round-trips) holds, but OAuth latencies are modeled, not measured against a real authorization server.
 
+\section{Threat Model}
+\label{sec:threat}
+
+This section defines seven adversary classes relevant to agent delegation and characterizes what \aip{} prevents, detects, or does not address for each.
+
+\paragraph{Malicious delegatee (scope widening).} A delegatee that attempts to widen its granted scope beyond the parent block's authority is prevented by Biscuit's check-all-blocks semantics: the authorizer evaluates every block in the chain and rejects any fact that contradicts an earlier attenuation. This is a cryptographic guarantee, not a runtime policy. However, a delegatee acting maliciously within its granted scope (e.g., calling permitted tools for harmful purposes) is out of scope for the token layer.
+
+\paragraph{Compromised identity host (DNS hijack).} An attacker who compromises a DNS-based identity host can serve a forged identity document. \aip{} does not prevent this attack, but the document self-signature (Section~\ref{sec:identity}) enables detection: a forged document will fail signature verification unless the attacker also possesses the agent's private key. If the attacker holds the actual private key, the identity is fully compromised and \aip{} provides no defense.
+
+\paragraph{Replay attacker.} An attacker who captures and replays an \ibct{} is partially mitigated by short-lived token expiry. Tokens with expiry timestamps that have passed are rejected during verification. However, real-time replay within the token's TTL window is not prevented by the token alone; transport-layer protections (TLS, nonce binding) provide the primary defense.
+
+\paragraph{Dishonest verifier.} A verifier that skips signature checks, ignores policy evaluation, or accepts expired tokens can grant unauthorized access. \aip{} assumes the verifier is trusted and correctly implemented. Verifier compliance is an operational concern addressed through conformance testing and reference implementations, not a property the protocol can enforce cryptographically.
+
+\paragraph{Fraudulent completion block.} Completion blocks are self-reported by default (Section~\ref{sec:completion}): the executing agent signs its own result claim. \aip{} provides attribution binding (the signature identifies who made the claim) but does not prevent a dishonest agent from misrepresenting results. Counter-signing and third-party attestation provide stronger guarantees but are optional in v1.
+
+\paragraph{Colluding sub-agents.} Two or more agents in a delegation chain that collude to misuse granted authority are not prevented by \aip{}. The delegation chain records who delegated to whom, providing partial detection through audit trail analysis, but collusion within granted scopes is outside the protocol's threat model.
+
+\paragraph{DoS via policy complexity.} An attacker who crafts a token with deeply nested Datalog rules to exhaust verifier CPU is partially mitigated by the policy profile system. The Simple profile generates only four canonical check templates with bounded evaluation. The Advanced profile permits full Datalog but caps evaluation at 1,000 iterations. Verifiers that enforce profile restrictions bound their worst-case evaluation cost.
+
 \section{Limitations}
 \label{sec:limitations}
 
@@ -475,11 +514,11 @@ We evaluate a 2-hop \mcp{} delegation scenario (orchestrator to specialist to to
 \section{Conclusion}
 \label{sec:conclusion}
 
-Agent identity requires seven properties: public-key verification, holder-side scope attenuation, expressive policy, cross-protocol identity flow, provenance binding, no blockchain or heavy infrastructure dependency, and agent lifecycle awareness. Our survey of seven categories of prior work (Section~\ref{sec:related}) found that no existing solution provides more than four. The gap is structural, not incremental. OAuth assumes centralized authorization servers. DIDs assume blockchain infrastructure. Macaroons assume shared secrets. Biscuit provides the right token format but no identity protocol. The agent ecosystem needs a solution designed for agents.
+Agent identity requires seven properties: public-key verification, holder-side scope attenuation, expressive policy, cross-protocol identity flow, provenance binding, no blockchain or heavy infrastructure dependency, and agent lifecycle awareness. Our survey of eleven categories of prior work (Section~\ref{sec:related}) found that no single solution addresses more than four. Each approach makes design assumptions that preclude coverage of the remaining properties: OAuth assumes centralized authorization servers, DIDs assume blockchain infrastructure, macaroons assume shared secrets, and Biscuit provides the right token format but no identity protocol. Several 2026 efforts (AAP, Transaction Tokens, AID) address important subsets but none combines all seven in a single protocol with implementation.
 
 We introduced Invocation-Bound Capability Tokens (\ibct{}s), implemented in the Agent Identity Protocol (\aip{}). \ibct{}s fuse identity, attenuated authorization, and provenance into a single append-only chain. Two wire formats serve different deployment scenarios: compact mode (JWT, 356 bytes, 0.049\,ms verification in Rust) for single-hop \mcp{} calls, and chained mode (Biscuit with Datalog policies, linear scaling at 340--380 bytes per block) for multi-hop delegation with audit trails. Reference implementations in Python (827~LOC, 58~tests) and Rust (1,214~LOC, 20~tests) demonstrate cross-language interoperability. In a 2-hop delegation scenario, \aip{} adds 0.39\,ms of auth overhead compared to 20\,ms for simulated OAuth token exchange.
 
-Three directions follow from this work. First, the \atoa{} protocol binding (Section~\ref{sec:bindings}) needs validation against production agent-to-agent workflows, particularly for cross-organization delegation where identity documents are hosted on different domains. Second, the \ldp{} provenance bridge should be formalized: when both \aip{} and \ldp{} are active, the combined artifact provides a complete trace from human authorization through agent delegation to verified output. Third, we intend to submit \aip{} as an IETF individual draft, contributing a concrete token format and protocol binding to the active standardization discussions around agent identity. Together with \ldp{} (provenance) and \dci{} (reasoning), \aip{} completes a trust stack where every agent action is identifiable, traceable, and accountable.
+Three directions follow from this work. First, the \atoa{} protocol binding (Section~\ref{sec:bindings}) needs validation against production agent-to-agent workflows, particularly for cross-organization delegation where identity documents are hosted on different domains. Second, the \ldp{} provenance bridge should be formalized: when both \aip{} and \ldp{} are active, the combined artifact provides a complete trace from human authorization through agent delegation to verified output. Third, we intend to submit \aip{} as an IETF individual draft, contributing a concrete token format and protocol binding to the active standardization discussions around agent identity. Together with \ldp{} (provenance) and \dci{} (reasoning), \aip{} addresses a trust stack where every agent action is identifiable, traceable, and accountable.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
