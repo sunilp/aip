@@ -68,7 +68,7 @@
 \maketitle
 
 \begin{abstract}
-AI agents increasingly call tools via the Model Context Protocol (\mcp{}) and delegate to other agents via Agent-to-Agent (\atoa{}), yet neither protocol verifies agent identity. A scan of approximately 2,000 \mcp{} servers found all lacked authentication. No single existing protocol combines all of: ephemeral agent identity (ruling out infrastructure-heavy solutions like SPIFFE), holder-side scope attenuation without contacting the issuer (ruling out OAuth and standard JWTs), and cross-protocol identity flow across MCP, A2A, and HTTP (ruling out single-transport solutions). We introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that fuses identity, attenuated authorization, and provenance binding into a single append-only token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop cases) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation). We provide reference implementations in Python (827 LOC) and Rust (1,214 LOC) with 78 tests and full cross-language interoperability. Compact mode verification takes 0.049\,ms (Rust) and 0.189\,ms (Python). Chained tokens scale linearly at 340--380 bytes per delegation block, with sub-millisecond verification even at depth~5. In a 2-hop delegation scenario, \aip{} adds 0.39\,ms of auth overhead compared to 20\,ms for simulated OAuth token exchange, reducing authentication cost by 98\%. \aip{} addresses the identity layer of an agent trust stack alongside our prior work on \ldp{} (provenance) and \dci{} (reasoning).
+AI agents increasingly call tools via the Model Context Protocol (\mcp{}) and delegate to other agents via Agent-to-Agent (\atoa{}), yet neither protocol verifies agent identity. A scan of approximately 2,000 \mcp{} servers found all lacked authentication. No single existing protocol combines all of: ephemeral agent identity (ruling out infrastructure-heavy solutions like SPIFFE), holder-side scope attenuation without contacting the issuer (ruling out OAuth and standard JWTs), and cross-protocol identity flow across MCP, A2A, and HTTP (ruling out single-transport solutions). We introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that fuses identity, attenuated authorization, and provenance binding into a single append-only token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop cases) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation). We provide reference implementations in Python (827 LOC) and Rust (1,214 LOC) with 78 tests and full cross-language interoperability. Compact mode verification takes 0.049\,ms (Rust) and 0.189\,ms (Python). Chained tokens scale linearly at 340--380 bytes per delegation block, with sub-millisecond verification even at depth~5. In a real multi-agent deployment with Gemini 2.5 Flash, \aip{} adds 2.35\,ms of overhead (0.086\% of total latency). Adversarial evaluation across 600 attack attempts shows 100\% rejection, with two attack categories (delegation depth violation and audit evasion) uniquely caught by \aip{}'s chained delegation model. \aip{} addresses the identity layer of an agent trust stack alongside our prior work on \ldp{} (provenance) and \dci{} (reasoning).
 \end{abstract}
 
 \section{Introduction}
@@ -80,7 +80,7 @@ This gap is attracting attention. Google DeepMind's ``Intelligent AI Delegation'
 
 Existing identity and authorization approaches each fail at least one requirement of agent delegation. OAuth 2.0/2.1~\citep{ietf2024oauth21} requires centralized authorization servers, produces opaque tokens with no delegation chain, and provides no holder-side scope attenuation. W3C DIDs~\citep{w3c2026did} introduce blockchain dependencies and circular trust bootstrapping. Macaroons~\citep{birgisson2014macaroons} use HMAC shared secrets that make every verifier a potential forger. UCANs~\citep{ucan2024spec} inherit DID complexity and suffer quadratic token bloat from nested JWTs. SPIFFE/SPIRE~\citep{spiffe2024} demands dedicated infrastructure incompatible with ephemeral agent creation. Biscuit~\citep{biscuit2024spec} gets the token format right but defines no identity resolution, no protocol bindings, and no provenance model. Agent identity requires seven properties (Section~\ref{sec:gap}); no single solution surveyed provides more than four.
 
-This paper makes two contributions. First, we introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that unifies identity, attenuated authorization, and provenance binding in a single evolvable token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop \mcp{} calls) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation chains with completion blocks). Second, we evaluate \aip{} with reference implementations in Python and Rust, demonstrating sub-millisecond verification for compact tokens (0.049\,ms Rust, 0.189\,ms Python), linear scaling of chained tokens at 340--380 bytes per delegation block, and 98\% lower auth overhead compared to simulated OAuth token exchange in a multi-hop scenario.
+This paper makes two contributions. First, we introduce Invocation-Bound Capability Tokens (\ibct{}s), a primitive that unifies identity, attenuated authorization, and provenance binding in a single evolvable token chain. \ibct{}s operate in two wire formats: compact mode (a signed JWT for single-hop \mcp{} calls) and chained mode (a Biscuit token with Datalog policies for multi-hop delegation chains with completion blocks). Second, we evaluate \aip{} with reference implementations in Python and Rust, demonstrating sub-millisecond verification for compact tokens (0.049\,ms Rust, 0.189\,ms Python), linear scaling of chained tokens at 340--380 bytes per delegation block, negligible overhead (0.086\% of total latency) in a real multi-agent deployment with Gemini 2.5 Flash inference, and 100\% attack rejection across 600 adversarial tests spanning six attack categories.
 
 \aip{} addresses the identity layer of an agent trust stack that we have developed across three complementary protocols. In our prior work, we introduced \ldp{}~\citep{prakash2025ldp}, which provides the provenance layer, tracking what agents produce and how reliably. We also introduced \dci{}~\citep{prakash2025dci}, which provides the reasoning layer, structuring how agents deliberate. \aip{} provides the identity layer, establishing who agents are and what they are authorized to do. The three protocols are independently deployable but mutually reinforcing: \aip{} identity documents link to \ldp{} via the extensions field, and \ibct{} completion blocks link to provenance records via \texttt{ldp\_provenance\_id}.
 
@@ -384,17 +384,18 @@ Middleware & \texttt{aip-mcp} / 151   & \texttt{aip\_mcp} / 76    & 7 + 12 \\
 \section{Evaluation}
 \label{sec:eval}
 
-This section evaluates \aip{} along three dimensions: compact mode overhead, chained mode scaling, and end-to-end delegation cost relative to OAuth token exchange. All benchmarks were run on an Apple M3 Max (macOS 15.3), using the Python and Rust implementations described in Section~\ref{sec:impl}. Compact mode benchmarks used 1,000 iterations; chained mode used 100 iterations per depth level.
+This section evaluates \aip{} along four dimensions: compact mode overhead (microbenchmarks), chained mode scaling (microbenchmarks), real-world deployment overhead with LLM inference (real HTTP and Gemini 2.5 Flash), and adversarial security (six attack categories). All benchmarks were run on an Apple M3 Max (macOS 15.3), using the Python and Rust implementations described in Section~\ref{sec:impl}. Compact mode benchmarks used 1,000 iterations; chained mode used 100 iterations per depth level. Real-world experiments used actual HTTP transport and live LLM inference.
 
 \subsection{Hypotheses}
 \label{sec:hypotheses}
 
-We state three hypotheses:
+We state four hypotheses:
 
 \begin{itemize}[leftmargin=*,nosep]
-  \item \textbf{H1:} Compact mode adds negligible overhead to \mcp{} tool calls, with sub-millisecond verification latency.
+  \item \textbf{H1:} Compact mode adds negligible overhead to \mcp{} tool calls (sub-millisecond over real HTTP).
   \item \textbf{H2:} Chained mode delegation overhead scales linearly with chain depth, both in token size and verification latency.
-  \item \textbf{H3:} End-to-end \aip{} delegation adds less overhead than OAuth token exchange per hop.
+  \item \textbf{H3:} \aip{} overhead is negligible relative to real LLM inference in multi-agent delegation.
+  \item \textbf{H4:} \aip{} detects attacks that unsigned and plain JWT deployments miss.
 \end{itemize}
 
 \subsection{Microbenchmarks (H1, H2)}
@@ -444,38 +445,106 @@ Verify   & 0.049 & 0.059 & 0.189 & 0.231 \\
 
 \paragraph{Discussion.} Across both modes, all verification latencies remain sub-millisecond. A depth-5 chained token (the recommended maximum) is under 2.5\,KB, well within the 8\,KB HTTP header limit. \aip{} verification is not a bottleneck for agent tool calls.
 
-\subsection{End-to-End Delegation Scenario (H3)}
-\label{sec:e2e}
+\subsection{Real-World MCP Deployment (H1, H3)}
+\label{sec:real-mcp}
 
-We evaluate a 2-hop \mcp{} delegation scenario (orchestrator to specialist to tool server) under three conditions: no authentication, \aip{} chained mode (Python, two delegation blocks), and simulated OAuth token exchange (10\,ms per hop, representing a conservative network round-trip estimate). OAuth latencies are \textit{simulated}, not measured against a real authorization server. Each condition is tested at four inference latencies (0, 100, 500, 1,000\,ms). Table~\ref{tab:e2e} reports the results.
+To validate compact mode overhead under realistic conditions, we measured \aip{} token creation and verification over real HTTP (localhost) with 100 iterations per condition. Table~\ref{tab:real-mcp} reports mean and p99 latencies for three conditions: no authentication, \aip{} compact mode, and \aip{} chained mode.
 
 \begin{table}[t]
 \centering
-\caption{End-to-end auth overhead comparison for a 2-hop delegation (50 iterations). OAuth latencies are simulated at 10\,ms per hop. All values in milliseconds.}
-\label{tab:e2e}
+\caption{Real MCP tool call latency over HTTP (100 iterations). All values in milliseconds.}
+\label{tab:real-mcp}
 \footnotesize
-\begin{tabular}{@{}lrrrr@{}}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Inference (ms)} & \textbf{No Auth} & \textbf{AIP Chained} & \textbf{OAuth Sim.} & \textbf{AIP/OAuth Overhead} \\
+\textbf{Condition} & \textbf{Mean} & \textbf{p50} & \textbf{p99} & \textbf{Overhead vs.\ No Auth} \\
 \midrule
-0    &   0.0  &  0.39 & 20.0 &  2.0\% \\
-100  & 103.7  & 102.3 & 120.0 & 11.3\% \\
-500  & 503.4  & 502.2 & 520.0 & 11.1\% \\
-1000 & 1004.2 & 1001.6 & 1020.0 & 8.1\% \\
+No authentication  & 0.301 & 0.294 & 0.404 & -- \\
+AIP compact        & 0.523 & 0.507 & 0.819 & +0.222\,ms \\
+AIP chained        & 0.481 & 0.476 & 0.819 & +0.180\,ms \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\aip{} auth overhead for the full 2-hop chain is 0.39--2.3\,ms (local cryptographic verification), compared to 20\,ms for simulated OAuth (two round-trips). With realistic inference latencies, \aip{} adds less than 0.5\% overhead to total request time. The structural advantage: \aip{} verification is purely local, whereas OAuth requires one authorization server round-trip per hop.
+Both \aip{} modes add sub-millisecond overhead to real HTTP tool calls. Compact mode adds 0.222\,ms (73.9\% relative increase over a 0.301\,ms baseline), while chained mode adds 0.180\,ms (59.8\%). The absolute overhead in both cases is under a quarter of a millisecond. Chained mode is slightly faster than compact because the Biscuit library amortizes key operations across blocks, while compact mode pays the full JWT signature cost per call.
+
+\subsection{Multi-Agent Delegation with LLM Inference (H3)}
+\label{sec:real-llm}
+
+The critical question for production deployment is whether \aip{} overhead matters relative to LLM inference. We measured a complete orchestrator-to-specialist delegation with real Gemini 2.5 Flash inference over 10 iterations. Table~\ref{tab:real-llm} breaks down the time budget.
+
+\begin{table}[t]
+\centering
+\caption{Multi-agent delegation with Gemini 2.5 Flash (10 iterations). All values in milliseconds.}
+\label{tab:real-llm}
+\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Component} & \textbf{Mean} & \textbf{Min} & \textbf{Max} \\
+\midrule
+AIP create         &    0.385 &   0.146 &    0.934 \\
+AIP delegate       &    0.510 &   0.248 &    0.820 \\
+AIP verify         &    1.455 &   0.650 &    2.340 \\
+\midrule
+\textit{AIP total} &   \textit{2.351} &   &    \\
+\midrule
+LLM orchestrator   & 1,019.886 & 832.813 & 1,293.494 \\
+LLM specialist     & 1,727.052 & 1,557.999 & 1,897.933 \\
+\midrule
+\textit{LLM total} & \textit{2,747.038} &  &  \\
+\midrule
+\textbf{End-to-end total} & \textbf{2,749.476} & \textbf{2,500.0} & \textbf{3,010.7} \\
+\midrule
+\textbf{AIP as \% of total} & \textbf{0.086\%} & & \textbf{p99: 0.127\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\aip{} protocol overhead is less than 0.13\% of total end-to-end latency even at p99. The mean overhead is 2.351\,ms against a mean total of 2,749\,ms. LLM inference dominates by three orders of magnitude: the orchestrator call averages 1,020\,ms and the specialist averages 1,727\,ms, together accounting for 99.91\% of total time. The structural advantage of \aip{} is clear: because verification is purely local (no authorization server round-trip), protocol overhead scales with cryptographic operations, not network latency.
+
+\subsection{Adversarial Security Evaluation (H4)}
+\label{sec:adversarial}
+
+We evaluated \aip{} against six attack categories, with 100 iterations per attack (600 total attempts), under three deployment configurations: \aip{} (compact + chained), unsigned (no authentication), and plain JWT (standard signed JWT without \aip{} delegation semantics). Table~\ref{tab:adversarial} reports rejection rates.
+
+\begin{table*}[t]
+\centering
+\caption{Adversarial security evaluation (100 iterations per attack, 600 total). Rejection rate shown as fraction of attempts blocked.}
+\label{tab:adversarial}
+\footnotesize
+\begin{tabular}{@{}p{3.2cm}p{5.5cm}cccp{3.8cm}@{}}
+\toprule
+\textbf{Attack} & \textbf{Description} & \textbf{AIP} & \textbf{Unsigned} & \textbf{JWT} & \textbf{AIP Unique Defense} \\
+\midrule
+Scope widening & Agent invokes \texttt{tool:email} when only \texttt{tool:search} was delegated & 100\% & 0\% & 100\% & Chained Datalog checks enforce scope at every delegation hop \\
+\addlinespace
+Depth violation & Second delegation attempted when \texttt{max\_depth=1} & 100\% & 0\% & 0\% & \texttt{max\_depth} in authority block prevents unbounded delegation \\
+\addlinespace
+Expired token replay & Token with \texttt{exp=now-60s} presented for verification & 100\% & 0\% & 100\% & Both compact (JWT \texttt{exp}) and chained (Datalog time check) enforce expiry \\
+\addlinespace
+Wrong key verification & Token signed by key A, verified against unrelated key B & 100\% & 0\% & 100\% & Ed25519 signature binding at every layer \\
+\addlinespace
+Empty context (audit evasion) & Delegation with empty context string to evade audit trail & 100\% & 0\% & 0\% & Mandatory non-empty context on every delegation enforces audit provenance \\
+\addlinespace
+Token forgery & Base64 token tampered (character flip), then verified & 100\% & 0\% & 100\% & Biscuit signature covers every block; any tampering is detected \\
+\midrule
+\textbf{Total (600 attempts)} & & \textbf{100\%} & \textbf{0\%} & \textbf{67\%} & \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\aip{} rejected 600/600 attack attempts across all six categories. Unsigned deployments rejected 0/600, confirming that without any authentication layer, all attacks succeed. Plain JWT deployments caught four of six attack types (scope widening, expired token replay, wrong key verification, and token forgery) but missed two: depth violation and empty context audit evasion. These two failures are structurally important. Standard JWTs have no concept of delegation depth, so there is no mechanism to enforce \texttt{max\_depth} constraints. JWTs also have no mandatory context requirement, so an agent can delegate silently without recording an audit trail. \aip{} uniquely defends against depth violation and audit evasion through mandatory delegation context and bounded depth in the authority block, attacks that neither unsigned nor JWT-only deployments can detect.
 
 \subsection{Evidence Summary}
 \label{sec:evidence}
 
-\textbf{H1 supported:} Compact verification is 0.049\,ms (Rust) and 0.189\,ms (Python), both sub-millisecond. Token size is 356 bytes.
+\textbf{H1 supported:} Compact verification is 0.049\,ms (Rust) and 0.189\,ms (Python) in microbenchmarks. In a real MCP deployment over HTTP, compact mode adds 0.222\,ms and chained mode adds 0.180\,ms, both sub-millisecond. Token size is 356 bytes (compact) and scales linearly in chained mode.
 
-\textbf{H2 supported:} Token size grows linearly at 340--380 bytes per block. Verification latency grows linearly, reaching 0.745\,ms at depth~5. Scope attenuation enforced in 100/100 adversarial tests.
+\textbf{H2 supported:} Microbenchmarks confirm linear scaling. Token size grows at 340--380 bytes per block. Verification latency grows linearly, reaching 0.745\,ms (Rust) at depth~5. Scope attenuation was enforced in 100/100 test cases.
 
-\textbf{H3 supported with caveats:} \aip{} 2-hop auth overhead is 0.39--2.3\,ms versus 20\,ms for simulated OAuth (10\,ms per hop). The structural claim (local verification avoids network round-trips) holds, but OAuth latencies are modeled, not measured against a real authorization server.
+\textbf{H3 supported:} With real Gemini 2.5 Flash inference, \aip{} adds 2.351\,ms mean overhead against 2,749\,ms total latency, representing 0.086\% of end-to-end time (0.127\% at p99). Protocol overhead is three orders of magnitude smaller than LLM inference.
+
+\textbf{H4 supported:} \aip{} rejected 600/600 adversarial attempts across six attack categories. Plain JWT missed two categories (depth violation, empty context audit evasion) that \aip{}'s chained delegation model uniquely detects. Unsigned deployments missed all six.
 
 \section{Threat Model}
 \label{sec:threat}
@@ -499,7 +568,7 @@ This section defines seven adversary classes relevant to agent delegation and ch
 \section{Limitations}
 \label{sec:limitations}
 
-\textbf{No production deployment data.} All evaluation results come from controlled benchmarks and simulated scenarios. We have not deployed \aip{} in a production multi-agent system with real user traffic, real authorization servers, or real inference workloads. The performance characteristics reported in Section~\ref{sec:eval} are indicative of cryptographic overhead, not end-to-end production behavior.
+\textbf{Limited production deployment data.} While Section~\ref{sec:eval} includes real HTTP transport and real LLM inference (Gemini 2.5 Flash), the evaluation was conducted on a single machine with localhost networking. We have not deployed \aip{} in a production multi-agent system with real user traffic, cross-datacenter networking, or sustained load. The performance characteristics are representative of cryptographic and protocol overhead but do not capture production networking conditions.
 
 \textbf{Datalog verifier complexity.} The Biscuit Datalog verifier in chained mode is a potential attack surface. A maliciously crafted token with deeply nested or recursive policy rules could consume excessive CPU during verification. The Advanced policy profile caps evaluation at 1,000 iterations, and the Simple profile (which generates only the four canonical templates) eliminates this risk entirely. We recommend Simple as the default for all deployments.
 
@@ -516,7 +585,7 @@ This section defines seven adversary classes relevant to agent delegation and ch
 
 Agent identity requires seven properties: public-key verification, holder-side scope attenuation, expressive policy, cross-protocol identity flow, provenance binding, no blockchain or heavy infrastructure dependency, and agent lifecycle awareness. Our survey of eleven categories of prior work (Section~\ref{sec:related}) found that no single solution addresses more than four. Each approach makes design assumptions that preclude coverage of the remaining properties: OAuth assumes centralized authorization servers, DIDs assume blockchain infrastructure, macaroons assume shared secrets, and Biscuit provides the right token format but no identity protocol. Several 2026 efforts (AAP, Transaction Tokens, AID) address important subsets but none combines all seven in a single protocol with implementation.
 
-We introduced Invocation-Bound Capability Tokens (\ibct{}s), implemented in the Agent Identity Protocol (\aip{}). \ibct{}s fuse identity, attenuated authorization, and provenance into a single append-only chain. Two wire formats serve different deployment scenarios: compact mode (JWT, 356 bytes, 0.049\,ms verification in Rust) for single-hop \mcp{} calls, and chained mode (Biscuit with Datalog policies, linear scaling at 340--380 bytes per block) for multi-hop delegation with audit trails. Reference implementations in Python (827~LOC, 58~tests) and Rust (1,214~LOC, 20~tests) demonstrate cross-language interoperability. In a 2-hop delegation scenario, \aip{} adds 0.39\,ms of auth overhead compared to 20\,ms for simulated OAuth token exchange.
+We introduced Invocation-Bound Capability Tokens (\ibct{}s), implemented in the Agent Identity Protocol (\aip{}). \ibct{}s fuse identity, attenuated authorization, and provenance into a single append-only chain. Two wire formats serve different deployment scenarios: compact mode (JWT, 356 bytes, 0.049\,ms verification in Rust) for single-hop \mcp{} calls, and chained mode (Biscuit with Datalog policies, linear scaling at 340--380 bytes per block) for multi-hop delegation with audit trails. Reference implementations in Python (827~LOC, 58~tests) and Rust (1,214~LOC, 20~tests) demonstrate cross-language interoperability. In a real multi-agent deployment with Gemini 2.5 Flash, \aip{} adds 2.35\,ms of overhead (0.086\% of total latency). Adversarial evaluation across 600 attack attempts shows 100\% rejection, with two categories (delegation depth violation and audit evasion) uniquely caught by \aip{}'s chained delegation model.
 
 Three directions follow from this work. First, the \atoa{} protocol binding (Section~\ref{sec:bindings}) needs validation against production agent-to-agent workflows, particularly for cross-organization delegation where identity documents are hosted on different domains. Second, the provenance bridge between \aip{} and our \ldp{} protocol should be formalized: when both are active, the combined artifact provides a complete trace from human authorization through agent delegation to verified output. Third, we intend to submit \aip{} as an IETF individual draft, contributing a concrete token format and protocol binding to the active standardization discussions around agent identity. Together with our prior work on \ldp{} (provenance) and \dci{} (reasoning), \aip{} addresses a trust stack where every agent action is identifiable, traceable, and accountable.
 
