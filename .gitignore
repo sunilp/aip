@@ -15,6 +15,12 @@ dist/
 paper/
 texput.log
 
+# IETF draft (local only)
+ietf/
+
+# Planning (local only)
+planning/
+
 # Archives
 *.tar.gz
 
