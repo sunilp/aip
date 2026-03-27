@@ -138,6 +138,35 @@ python -m pytest tests/conformance/ -v
 - [Single-agent MCP](examples/single-agent-mcp/) -- agent authenticates to MCP tool server
 - [Multi-agent delegation](examples/multi-agent-delegation/) -- orchestrator delegates to specialist, calls tool server
 
+## Paper
+
+The protocol design, experiments, and adversarial evaluation are described in:
+
+> Sunil Prakash. **AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A.** arXiv preprint arXiv:2603.24775, 2026.
+> [https://arxiv.org/abs/2603.24775](https://arxiv.org/abs/2603.24775)
+
+### Citing
+
+```bibtex
+@article{prakash2026aip,
+  title={AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A},
+  author={Prakash, Sunil},
+  journal={arXiv preprint arXiv:2603.24775},
+  year={2026}
+}
+```
+
+### Related Papers
+
+AIP is part of a multi-agent trust stack. Each paper addresses a different layer:
+
+| Layer | Paper | arXiv |
+|-------|-------|-------|
+| **Identity** | AIP: Verifiable Delegation Across MCP and A2A | [2603.24775](https://arxiv.org/abs/2603.24775) |
+| **Provenance** | The Provenance Paradox in Multi-Agent LLM Routing | [2603.18043](https://arxiv.org/abs/2603.18043) |
+| **Protocol** | LDP: An Identity-Aware Protocol for Multi-Agent LLM Systems | [2603.08852](https://arxiv.org/abs/2603.08852) |
+| **Reasoning** | DCI: Structured Collective Reasoning with Typed Epistemic Acts | [2603.11781](https://arxiv.org/abs/2603.11781) |
+
 ## License
 
 Apache 2.0
