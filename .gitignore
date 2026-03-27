@@ -9,6 +9,19 @@ __pycache__/
 dist/
 .venv/
 *.so
+**/.pytest_cache/
+
+# LaTeX build artifacts
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.log
+paper/main.out
+paper/missfont.log
+texput.log
+
+# Archives
+*.tar.gz
 
 # IDE
 .idea/
