@@ -21,11 +21,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "cryptography>=43.0",
-    "PyJWT[crypto]>=2.9",
-    "pydantic>=2.0",
-    "base58>=2.1",
-    "biscuit-python>=0.4",
+    "agent-identity-protocol>=0.1.0",
 ]
 
 [project.optional-dependencies]
