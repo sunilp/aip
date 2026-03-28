@@ -15,8 +15,8 @@ dist/
 paper/
 texput.log
 
-# IETF draft (local only)
-ietf/
+# Submissions (IETF, NIST — never commit)
+submissions/
 
 # Planning (local only)
 planning/
