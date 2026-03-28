@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aip-agents"
+version = "0.1.0"
+description = "AIP identity and delegation for AI agent frameworks"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Sunil Prakash", email = "sunil@sunilprakash.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "cryptography>=43.0",
+    "PyJWT[crypto]>=2.9",
+    "pydantic>=2.0",
+    "base58>=2.1",
+    "biscuit-python>=0.4",
+]
+
+[project.optional-dependencies]
+crewai = ["crewai>=0.80"]
+adk = ["google-adk>=1.0"]
+all = ["aip-agents[crewai,adk]"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/sunilp/aip"
+Documentation = "https://github.com/sunilp/aip#aip-agents"
+Repository = "https://github.com/sunilp/aip"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aip_agents"]
+
+[tool.hatch.build]
+root = "."
