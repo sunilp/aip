@@ -1,13 +1,16 @@
 # aip-agents
 
-AIP identity and delegation for AI agent frameworks. Add cryptographic identity, scoped delegation chains, and audit-ready token flows to your CrewAI and Google ADK agents in 5 lines of code.
+AIP identity and delegation for AI agent frameworks. Add cryptographic identity, scoped delegation chains, and audit-ready token flows to your agents in 5 lines of code.
+
+Supports **CrewAI**, **Google ADK**, and **LangChain**.
 
 ## Install
 
 ```bash
 pip install aip-agents[crewai]    # CrewAI
 pip install aip-agents[adk]       # Google ADK
-pip install aip-agents[all]       # Both
+pip install aip-agents[langchain] # LangChain
+pip install aip-agents[all]       # All frameworks
 ```
 
 ## Quick Start: CrewAI
@@ -39,6 +42,28 @@ runner = Runner(agent=agent)
 
 plugin.register(runner)  # Walks agent tree, creates delegation chains
 runner.run("task")
+```
+
+## Quick Start: LangChain
+
+```python
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from aip_agents.adapters.langchain import AIPLangChainPlugin
+
+plugin = AIPLangChainPlugin()
+
+# Register single agent
+plugin.register(agent_executor, name="researcher")
+
+# Or register multiple agents (supervisor pattern)
+plugin.register_agents({
+    "researcher": researcher_executor,
+    "writer": writer_executor,
+})
+
+# Get headers for tool calls
+headers = plugin.get_tool_call_headers("researcher")
+# {"X-AIP-Token": "eyJ..."}
 ```
 
 ## What You Get

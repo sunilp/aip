@@ -12,6 +12,11 @@ requires-python = ">=3.10"
 authors = [
     { name = "Sunil Prakash", email = "sunil@sunilprakash.com" },
 ]
+keywords = [
+    "agent-framework", "crewai", "google-adk", "langchain",
+    "identity", "delegation", "cryptography", "multi-agent",
+    "AI", "MCP", "A2A", "security",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -27,7 +32,8 @@ dependencies = [
 [project.optional-dependencies]
 crewai = ["crewai>=0.80"]
 adk = ["google-adk>=1.0"]
-all = ["aip-agents[crewai,adk]"]
+langchain = ["langchain>=0.3", "langchain-core>=0.3"]
+all = ["aip-agents[crewai,adk,langchain]"]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 
 [project.urls]

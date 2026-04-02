@@ -1,8 +1,15 @@
 # Agent Identity Protocol (AIP)
 
+[![PyPI - agent-identity-protocol](https://img.shields.io/pypi/v/agent-identity-protocol?label=agent-identity-protocol)](https://pypi.org/project/agent-identity-protocol/)
+[![PyPI - aip-agents](https://img.shields.io/pypi/v/aip-agents?label=aip-agents)](https://pypi.org/project/aip-agents/)
+[![Downloads](https://img.shields.io/pypi/dm/agent-identity-protocol)](https://pypi.org/project/agent-identity-protocol/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 Verifiable, delegable identity for AI agents across MCP and A2A.
 
 AIP gives every agent a cryptographic identity that flows across protocol boundaries. A single token answers: who authorized this, through which agents, with what scope at each hop, and what was the outcome. No blockchain, no wallet UX -- just Ed25519 keys and append-only token chains.
+
+> **Tutorial**: [Add Cryptographic Identity to Your CrewAI Agents in 5 Minutes](https://sunilprakash.com/writing/agent-identity-crewai/)
 
 ## Why AIP
 
@@ -15,7 +22,7 @@ AIP fills this gap.
 ## Quick Start (Python)
 
 ```bash
-pip install -e python/
+pip install agent-identity-protocol
 ```
 
 ```python
@@ -100,8 +107,22 @@ Start with compact. Upgrade to chained when you need delegation. Same identity s
 ### Python (primary SDK)
 
 ```bash
-cd python
-pip install -e ".[dev]"
+# Core library
+pip install agent-identity-protocol
+
+# Framework adapters (CrewAI, Google ADK, LangChain)
+pip install aip-agents[crewai]    # CrewAI
+pip install aip-agents[adk]       # Google ADK
+pip install aip-agents[langchain] # LangChain
+pip install aip-agents[all]       # all frameworks
+```
+
+PyPI: [agent-identity-protocol](https://pypi.org/project/agent-identity-protocol/) | [aip-agents](https://pypi.org/project/aip-agents/)
+
+For development from source:
+
+```bash
+cd python && pip install -e ".[dev]"
 ```
 
 ### Rust (reference implementation)

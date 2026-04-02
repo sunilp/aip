@@ -12,6 +12,11 @@ requires-python = ">=3.10"
 authors = [
     { name = "Sunil Prakash", email = "sunil@sunilprakash.com" },
 ]
+keywords = [
+    "agent", "identity", "delegation", "cryptography", "Ed25519",
+    "MCP", "A2A", "security", "tokens", "Biscuit", "multi-agent",
+    "AI", "authentication", "authorization", "verifiable",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
