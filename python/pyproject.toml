@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-identity-protocol"
-version = "0.1.0"
+version = "0.1.1"
 description = "Verifiable cryptographic identity and delegation for AI agents across MCP and A2A"
 readme = "../README.md"
 license = "Apache-2.0"
