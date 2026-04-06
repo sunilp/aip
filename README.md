@@ -5,56 +5,70 @@
 [![Downloads](https://img.shields.io/pypi/dm/agent-identity-protocol)](https://pypi.org/project/agent-identity-protocol/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-Verifiable, delegable identity for AI agents across MCP and A2A.
+**Add identity and auth to AI agents in 5 lines of code.**
 
-AIP gives every agent a cryptographic identity that flows across protocol boundaries. A single token answers: who authorized this, through which agents, with what scope at each hop, and what was the outcome. No blockchain, no wallet UX -- just Ed25519 keys and append-only token chains.
+## The problem
 
-> **Tutorial**: [Add Cryptographic Identity to Your CrewAI Agents in 5 Minutes](https://sunilprakash.com/writing/agent-identity-crewai/)
+MCP has no authentication. A2A has self-declared identities with no attestation. Your agents call tools anonymously, delegate to other agents without verification, and leave no audit trail. When something goes wrong, you have no way to trace who authorized what.
 
-## Why AIP
-
-- MCP has no authentication layer. A2A has self-declared identities with no attestation.
-- When Agent A delegates to Agent B, no identity verification happens.
-- No existing protocol combines identity, delegation, and provenance in a single verifiable artifact.
-
-AIP fills this gap.
-
-## Quick Start (Python)
+## The fix
 
 ```bash
-pip install agent-identity-protocol
+pip install aip-agents[crewai]
 ```
 
 ```python
-from aip_core.crypto import KeyPair
-from aip_token.claims import AipClaims
-from aip_token.compact import CompactToken
-import time
+from aip_agents.adapters.crewai import CrewAIPlugin
 
-# Generate identity
-kp = KeyPair.generate()
-
-# Create a compact token for MCP tool access
-claims = AipClaims(
-    iss="aip:key:ed25519:" + kp.public_key_multibase(),
-    sub="aip:web:example.com/tools/search",
-    scope=["tool:search"],
-    budget_usd=1.0,
-    max_depth=0,
-    iat=int(time.time()),
-    exp=int(time.time()) + 3600,
-)
-token = CompactToken.create(claims, kp)
-
-# Send to MCP server
-headers = {"X-AIP-Token": token}
+plugin = CrewAIPlugin(app_name="my-app")
+plugin.setup(crew)  # every agent gets a cryptographic identity
+headers = plugin.get_auth_headers("researcher")  # signed token for tool calls
 ```
 
-## Multi-Agent Delegation
+That's it. Every agent now has an Ed25519 identity, scoped delegation tokens, and MCP-compatible auth headers.
+
+### Google ADK
+
+```bash
+pip install aip-agents[adk]
+```
+
+```python
+from aip_agents.adapters.adk import ADKPlugin
+
+plugin = ADKPlugin(app_name="my-app")
+plugin.setup(root_agent)  # walks the agent tree, assigns identities
+headers = plugin.get_auth_headers("specialist")
+```
+
+### LangChain
+
+```bash
+pip install aip-agents[langchain]
+```
+
+```python
+from aip_agents.adapters.langchain import LangChainPlugin
+
+plugin = LangChainPlugin(app_name="my-app")
+plugin.register(executor, name="researcher")
+headers = plugin.get_auth_headers("researcher")
+```
+
+## What this gives you
+
+- **Cryptographic identity** -- every agent gets an Ed25519 keypair and an AIP identifier
+- **Scoped delegation** -- when agents delegate, each hop can only narrow scope, never widen
+- **MCP auth headers** -- signed `X-AIP-Token` headers that any MCP server can verify
+- **Audit trail** -- every token records who authorized what, through which agents, with what scope
+- **Two token modes** -- compact (JWT) for single-hop, chained (Biscuit) for multi-agent delegation
+
+## Multi-agent delegation
 
 When agents delegate to other agents, each hop cryptographically narrows scope:
 
 ```python
+from aip_core.crypto import KeyPair
 from aip_token.chained import ChainedToken
 
 root_kp = KeyPair.generate()
@@ -78,39 +92,18 @@ delegated = token.delegate(
     context="research task for user query",
 )
 
-# Specialist verifies before calling tool
+# Specialist can search, but not email
 delegated.authorize("tool:search", root_kp.public_key_bytes())  # passes
-delegated.authorize("tool:email", root_kp.public_key_bytes())   # raises -- attenuated away
+delegated.authorize("tool:email", root_kp.public_key_bytes())   # raises
 ```
-
-## Two Token Modes
-
-**Compact** (JWT + EdDSA) -- single hop, drop-in for existing MCP servers. Standard JWT libraries can verify.
-
-**Chained** (Biscuit) -- multi-hop delegation with append-only blocks. Each block can only narrow scope, never widen. Datalog policy evaluation at each hop.
-
-Start with compact. Upgrade to chained when you need delegation. Same identity scheme, same protocol bindings.
-
-## Features
-
-- DNS-based (`aip:web:`) and self-certifying (`aip:key:`) identity schemes
-- Ed25519 cryptography, no algorithm negotiation
-- MCP, A2A, and HTTP protocol bindings
-- MCP middleware for token verification
-- Delegation chains with cryptographic scope attenuation
-- Budget tracking in integer cents
-- Policy profiles: Simple (templated), Standard (curated Datalog), Advanced (full Datalog)
-- Identity document self-signatures (protects against domain compromise)
 
 ## Installation
 
-### Python (primary SDK)
-
 ```bash
-# Core library
+# Core library (if building directly on the protocol)
 pip install agent-identity-protocol
 
-# Framework adapters (CrewAI, Google ADK, LangChain)
+# Framework adapters (recommended)
 pip install aip-agents[crewai]    # CrewAI
 pip install aip-agents[adk]       # Google ADK
 pip install aip-agents[langchain] # LangChain
@@ -119,37 +112,12 @@ pip install aip-agents[all]       # all frameworks
 
 PyPI: [agent-identity-protocol](https://pypi.org/project/agent-identity-protocol/) | [aip-agents](https://pypi.org/project/aip-agents/)
 
-For development from source:
-
-```bash
-cd python && pip install -e ".[dev]"
-```
-
-### Rust (reference implementation)
-
-```toml
-[dependencies]
-aip-core = { path = "rust/aip-core" }
-aip-token = { path = "rust/aip-token" }
-aip-mcp = { path = "rust/aip-mcp" }
-```
-
-## Tests
-
-```bash
-# Python
-cd python && pytest tests/ -v
-
-# Rust
-cd rust && cargo test
-
-# Cross-language interop
-python -m pytest tests/conformance/ -v
-```
+Rust reference implementation available in `rust/`.
 
 ## Documentation
 
-- [Quickstart](docs/quickstart.md) -- 5 minutes to your first AIP token
+- **[sunilprakash.com/aip/](https://sunilprakash.com/aip/)** -- project hub with guides and tutorials
+- [Quickstart](https://sunilprakash.com/aip/quickstart/) -- 5 minutes to your first AIP token
 - [Delegation guide](docs/guide-delegation.md) -- chained tokens, scope attenuation, policy profiles
 - [Competitive analysis](docs/competitive-analysis.md) -- AIP vs OAuth, DID, UCAN, Macaroons, Biscuit, SPIFFE
 - [Specification](SPEC.md) -- full protocol spec
@@ -161,12 +129,10 @@ python -m pytest tests/conformance/ -v
 
 ## Paper
 
-The protocol design, experiments, and adversarial evaluation are described in:
-
 > Sunil Prakash. **AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A.** arXiv preprint arXiv:2603.24775, 2026.
 > [https://arxiv.org/abs/2603.24775](https://arxiv.org/abs/2603.24775)
 
-### Citing
+IETF Internet-Draft: [draft-prakash-aip-00](https://datatracker.ietf.org/doc/draft-prakash-aip/)
 
 ```bibtex
 @article{prakash2026aip,
@@ -177,9 +143,9 @@ The protocol design, experiments, and adversarial evaluation are described in:
 }
 ```
 
-### Related Papers
+### Related papers
 
-AIP is part of a multi-agent trust stack. Each paper addresses a different layer:
+AIP is part of a multi-agent trust stack:
 
 | Layer | Paper | arXiv |
 |-------|-------|-------|
@@ -187,6 +153,12 @@ AIP is part of a multi-agent trust stack. Each paper addresses a different layer
 | **Provenance** | The Provenance Paradox in Multi-Agent LLM Routing | [2603.18043](https://arxiv.org/abs/2603.18043) |
 | **Protocol** | LDP: An Identity-Aware Protocol for Multi-Agent LLM Systems | [2603.08852](https://arxiv.org/abs/2603.08852) |
 | **Reasoning** | DCI: Structured Collective Reasoning with Typed Epistemic Acts | [2603.11781](https://arxiv.org/abs/2603.11781) |
+
+## Tests
+
+```bash
+cd python && pytest tests/ -v
+```
 
 ## License
 
