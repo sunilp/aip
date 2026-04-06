@@ -97,6 +97,19 @@ delegated.authorize("tool:search", root_kp.public_key_bytes())  # passes
 delegated.authorize("tool:email", root_kp.public_key_bytes())   # raises
 ```
 
+## MCP Auth Proxy
+
+Protect any MCP server with one command:
+
+```bash
+pip install agent-identity-protocol
+aip-proxy --upstream http://localhost:3000 --port 8080 --trust-key z6Mkf...
+```
+
+The proxy verifies every request's AIP token, runs a security self-audit (TTL, scope, budget, chain depth), and forwards to your MCP server. Rejects anything unauthorized. Zero changes to your server code.
+
+[MCP proxy guide](https://sunilprakash.com/aip/guides/mcp-proxy/) | [Security model](https://sunilprakash.com/aip/security/)
+
 ## Installation
 
 ```bash
