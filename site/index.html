@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Agent Identity Protocol (AIP) -- add cryptographic identity, scoped delegation, and auth to AI agents across MCP and A2A. Works with CrewAI, Google ADK, and LangChain." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="AIP: Agent Identity Protocol" />
+  <meta property="og:description" content="Add identity and auth to AI agents in 5 lines of code. Cryptographic delegation for MCP and A2A." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIP: Agent Identity Protocol" />
+  <meta name="twitter:description" content="Add identity and auth to AI agents in 5 lines of code. Cryptographic delegation for MCP and A2A." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/" />
+  <link rel="alternate" type="application/rss+xml" title="Sunil Prakash -- Writing" href="https://sunilprakash.com/feed.xml" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>AIP: Agent Identity Protocol -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "Agent Identity Protocol (AIP)",
+    "author": { "@type": "Person", "name": "Sunil Prakash", "url": "https://sunilprakash.com/" },
+    "description": "Verifiable, delegable identity for AI agents across MCP and A2A",
+    "codeRepository": "https://github.com/sunilp/aip",
+    "programmingLanguage": ["Python", "Rust"],
+    "license": "https://www.apache.org/licenses/LICENSE-2.0"
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .install-cmd {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border: none;
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .install-cmd code { background: none; color: inherit; padding: 0; }
+    .framework-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+    .framework-tab {
+      padding: 10px 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .framework-tab:hover { color: var(--text); }
+    .framework-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--text);
+    }
+    .framework-panel {
+      display: none;
+      margin-top: 0;
+    }
+    .framework-panel.active { display: block; }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 32px 0;
+    }
+    .feature-item h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 6px;
+    }
+    .feature-item p {
+      font-size: 15px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.5;
+    }
+    .guide-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin: 32px 0;
+    }
+    .guide-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 24px;
+      transition: border-color 0.2s;
+    }
+    .guide-card:hover { border-color: var(--muted); }
+    .guide-card h4 {
+      font-family: var(--serif);
+      font-size: 17px;
+      margin: 0 0 8px;
+    }
+    .guide-card p {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0 0 12px;
+      line-height: 1.5;
+    }
+    .guide-card a {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .stats-row {
+      display: flex;
+      gap: 48px;
+      margin: 32px 0;
+      padding: 24px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--serif);
+      font-size: 28px;
+      font-weight: 500;
+      display: block;
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .token-flow {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 32px;
+      margin: 32px 0;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 2.2;
+    }
+    .token-flow .arrow { color: var(--muted); margin: 0 8px; }
+    .token-flow .node {
+      display: inline-block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 12px;
+    }
+    .token-flow .scope {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    @media (max-width: 768px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .guide-grid { grid-template-columns: 1fr; }
+      .stats-row { flex-wrap: wrap; gap: 24px; }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content">
+    <div class="page-hero">
+      <div class="wrap">
+        <p class="hero-label" style="font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px;">Open-source protocol</p>
+        <h1>Agent Identity Protocol</h1>
+        <p class="hero-sub">Your AI agents have no identity. AIP fixes that. Cryptographic delegation tokens for MCP and A2A, with scoped authorization and audit trails.</p>
+        <div class="hero-links" style="margin-top: 20px;">
+          <a href="/aip/quickstart/">Quickstart</a>
+          <a href="https://github.com/sunilp/aip" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://arxiv.org/abs/2603.24775" target="_blank" rel="noopener">Paper</a>
+          <a href="https://pypi.org/project/aip-agents/" target="_blank" rel="noopener">PyPI</a>
+          <a href="https://datatracker.ietf.org/doc/draft-prakash-aip/" target="_blank" rel="noopener">IETF Draft</a>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- The problem -->
+    <div class="section">
+      <div class="wrap">
+        <p class="section-label">The problem</p>
+        <p style="font-size: 17px; line-height: 1.7; max-width: 640px;">A scan of ~2,000 MCP servers found zero authentication. MCP recently added OAuth 2.1, but it only covers single-hop auth. When an orchestrator delegates to a specialist that calls a tool, the delegation chain disappears. Nobody knows who authorized what.</p>
+        <p style="font-size: 17px; line-height: 1.7; max-width: 640px;">A2A is worse: agent identities are self-declared strings with no cryptographic attestation. Any agent can claim to be any other agent.</p>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- The fix -->
+    <div class="section">
+      <div class="wrap">
+        <p class="section-label">The fix</p>
+        <p style="font-size: 17px; line-height: 1.7; max-width: 640px;">AIP gives every agent a cryptographic identity. A single token answers: who authorized this, through which agents, with what scope at each hop. No blockchain, no wallet UX. Ed25519 keys and append-only token chains.</p>
+
+        <div class="install-cmd"><code>pip install aip-agents[crewai]</code></div>
+
+        <div class="framework-tabs">
+          <button class="framework-tab active" data-panel="crewai">CrewAI</button>
+          <button class="framework-tab" data-panel="adk">Google ADK</button>
+          <button class="framework-tab" data-panel="langchain">LangChain</button>
+          <button class="framework-tab" data-panel="core">Core SDK</button>
+        </div>
+
+        <div class="framework-panel active" id="panel-crewai">
+<pre><code>from aip_agents.adapters.crewai import CrewAIPlugin
+
+plugin = CrewAIPlugin(app_name="my-app")
+plugin.setup(crew)  # every agent gets a cryptographic identity
+headers = plugin.get_auth_headers("researcher")  # signed token for tool calls</code></pre>
+        </div>
+
+        <div class="framework-panel" id="panel-adk">
+<pre><code>from aip_agents.adapters.adk import ADKPlugin
+
+plugin = ADKPlugin(app_name="my-app")
+plugin.setup(root_agent)  # walks the agent tree, assigns identities
+headers = plugin.get_auth_headers("specialist")</code></pre>
+        </div>
+
+        <div class="framework-panel" id="panel-langchain">
+<pre><code>from aip_agents.adapters.langchain import LangChainPlugin
+
+plugin = LangChainPlugin(app_name="my-app")
+plugin.register(executor, name="researcher")
+headers = plugin.get_auth_headers("researcher")</code></pre>
+        </div>
+
+        <div class="framework-panel" id="panel-core">
+<pre><code>from aip_core.crypto import KeyPair
+from aip_token.claims import AipClaims
+from aip_token.compact import CompactToken
+import time
+
+kp = KeyPair.generate()
+claims = AipClaims(
+    iss="aip:key:ed25519:" + kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/search",
+    scope=["tool:search"],
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()),
+    exp=int(time.time()) + 3600,
+)
+token = CompactToken.create(claims, kp)
+headers = {"X-AIP-Token": token}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- What you get -->
+    <div class="section">
+      <div class="wrap">
+        <p class="section-label">What you get</p>
+
+        <div class="feature-grid">
+          <div class="feature-item">
+            <h4>Cryptographic identity</h4>
+            <p>Every agent gets an Ed25519 keypair and an AIP identifier. DNS-based or self-certifying. No certificate authority needed.</p>
+          </div>
+          <div class="feature-item">
+            <h4>Scoped delegation</h4>
+            <p>When agents delegate, each hop can only narrow scope, never widen. Budget, tool access, and depth limits attenuate cryptographically.</p>
+          </div>
+          <div class="feature-item">
+            <h4>MCP and A2A auth</h4>
+            <p>Signed <code>X-AIP-Token</code> headers for MCP. Identity fields and token metadata for A2A. HTTP binding for everything else.</p>
+          </div>
+          <div class="feature-item">
+            <h4>Audit trail</h4>
+            <p>Every token records the full delegation chain. Who authorized what, through which agents, with what scope. Structured JSON logging.</p>
+          </div>
+          <div class="feature-item">
+            <h4>Two token modes</h4>
+            <p>Compact (JWT + EdDSA) for single-hop. Chained (Biscuit + Datalog) for multi-agent delegation. Start simple, upgrade when you need it.</p>
+          </div>
+          <div class="feature-item">
+            <h4>Policy profiles</h4>
+            <p>Simple (auto-generated), Standard (curated Datalog), Advanced (full Datalog). 90% of use cases never write Datalog by hand.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Delegation flow -->
+    <div class="section">
+      <div class="wrap">
+        <p class="section-label">How delegation works</p>
+        <p style="font-size: 17px; line-height: 1.7; max-width: 640px;">Each hop in a delegation chain creates a new Biscuit block that can only narrow the scope of the previous block. The token is append-only: you can add restrictions, never remove them.</p>
+
+        <div class="token-flow">
+          <span class="node">Orchestrator<span class="scope">search, email, browse | $5.00</span></span>
+          <span class="arrow">&rarr;</span>
+          <span class="node">Researcher<span class="scope">search | $1.00</span></span>
+          <span class="arrow">&rarr;</span>
+          <span class="node">Tool Server<span class="scope">verifies full chain</span></span>
+        </div>
+
+        <p style="font-size: 15px; color: var(--muted); max-width: 640px;">The researcher can search but not email. Its budget is $1.00, not $5.00. The tool server verifies every signature in the chain before granting access. If any block is tampered with, the entire chain is rejected.</p>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Guides -->
+    <div class="section">
+      <div class="wrap">
+        <p class="section-label">Guides</p>
+
+        <div class="guide-grid">
+          <div class="guide-card">
+            <h4>Quickstart</h4>
+            <p>Zero to working auth in 5 minutes. Install, generate keys, secure your agents.</p>
+            <a href="/aip/quickstart/">Get started &rarr;</a>
+          </div>
+          <div class="guide-card">
+            <h4>CrewAI</h4>
+            <p>Add cryptographic identity to your CrewAI agents and crews.</p>
+            <a href="https://sunilprakash.com/writing/agent-identity-crewai/">Read guide &rarr;</a>
+          </div>
+          <div class="guide-card">
+            <h4>Google ADK</h4>
+            <p>Identity and delegation for ADK agent hierarchies.</p>
+            <a href="/aip/guides/adk/" style="color: var(--light);">Coming soon</a>
+          </div>
+          <div class="guide-card">
+            <h4>LangChain</h4>
+            <p>Secure LangChain executors and multi-agent supervisors.</p>
+            <a href="/aip/guides/langchain/" style="color: var(--light);">Coming soon</a>
+          </div>
+          <div class="guide-card">
+            <h4>MCP Auth Proxy</h4>
+            <p>Drop-in auth for any MCP server. Zero code changes.</p>
+            <a href="/aip/guides/mcp-proxy/" style="color: var(--light);">Coming soon</a>
+          </div>
+          <div class="guide-card">
+            <h4>Delegation Patterns</h4>
+            <p>Multi-agent delegation, scope attenuation, and chain verification.</p>
+            <a href="/aip/guides/delegation/" style="color: var(--light);">Coming soon</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Research -->
+    <div class="section">
+      <div class="wrap">
+        <p class="section-label">Research</p>
+        <p style="font-size: 17px; line-height: 1.7; max-width: 640px;">The protocol design, experiments, and adversarial evaluation are described in the AIP paper. AIP is part of a multi-agent trust stack with three companion papers.</p>
+
+        <div class="entry">
+          <h3>AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A</h3>
+          <p class="meta">Sunil Prakash &middot; arXiv:2603.24775 &middot; 2026</p>
+          <p>0.049ms verification in Rust. 0.086% overhead in real LLM multi-agent chains. 100% rejection across 600 adversarial attacks in 6 categories.</p>
+          <div class="hero-links" style="margin-top: 8px;">
+            <a href="https://arxiv.org/abs/2603.24775" target="_blank" rel="noopener">Paper</a>
+            <a href="https://datatracker.ietf.org/doc/draft-prakash-aip/" target="_blank" rel="noopener">IETF Draft</a>
+            <a href="https://github.com/sunilp/aip/blob/master/SPEC.md" target="_blank" rel="noopener">Spec</a>
+          </div>
+        </div>
+
+        <details style="margin-top: 24px;">
+          <summary style="font-family: var(--mono); font-size: 13px; cursor: pointer; color: var(--muted);">Related papers (trust stack)</summary>
+          <div style="margin-top: 16px;">
+            <div class="entry">
+              <h3>The Provenance Paradox in Multi-Agent LLM Routing</h3>
+              <p class="meta">arXiv:2603.18043 &middot; 2026</p>
+              <a class="link" href="https://arxiv.org/abs/2603.18043" target="_blank" rel="noopener">Paper</a>
+            </div>
+            <div class="entry">
+              <h3>LDP: An Identity-Aware Protocol for Multi-Agent LLM Systems</h3>
+              <p class="meta">arXiv:2603.08852 &middot; 2026</p>
+              <a class="link" href="https://sunilprakash.com/research/ldp/">Interactive paper</a>
+              <a class="link" href="https://arxiv.org/abs/2603.08852" target="_blank" rel="noopener">arXiv</a>
+            </div>
+            <div class="entry">
+              <h3>DCI: Structured Collective Reasoning with Typed Epistemic Acts</h3>
+              <p class="meta">arXiv:2603.11781 &middot; 2026</p>
+              <a class="link" href="https://sunilprakash.com/research/dci/">Interactive paper</a>
+              <a class="link" href="https://arxiv.org/abs/2603.11781" target="_blank" rel="noopener">arXiv</a>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Framework tabs
+    document.querySelectorAll('.framework-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.framework-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.framework-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+      });
+    });
+
+    // Reveal animation (reuse site pattern)
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-visible'); obs.unobserve(e.target); } });
+      }, { threshold: 0.1 });
+      document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+    }
+  </script>
+</body>
+</html>
