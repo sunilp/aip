@@ -37,6 +37,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 
+[project.scripts]
+aip-proxy = "aip_mcp.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/sunilp/aip"
 Documentation = "https://github.com/sunilp/aip/blob/main/docs/quickstart.md"
