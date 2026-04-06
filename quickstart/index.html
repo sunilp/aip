@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Add cryptographic identity to your AI agents in 5 minutes. Step-by-step quickstart for AIP with CrewAI, Google ADK, and LangChain." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="AIP Quickstart -- Agent Identity in 5 Minutes" />
+  <meta property="og:description" content="Install, generate keys, add auth to your agents. Step-by-step guide for CrewAI, Google ADK, and LangChain." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/quickstart/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIP Quickstart -- Agent Identity in 5 Minutes" />
+  <meta name="twitter:description" content="Install, generate keys, add auth to your agents." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/quickstart/" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>AIP Quickstart -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "AIP Quickstart: Agent Identity in 5 Minutes",
+    "author": { "@type": "Person", "name": "Sunil Prakash" },
+    "datePublished": "2026-04-06",
+    "description": "Step-by-step guide to adding cryptographic identity to AI agents"
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .install-cmd {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border: none;
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .install-cmd code { background: none; color: inherit; padding: 0; }
+    .output-block {
+      background: #1a1a1a;
+      color: #c8c8c8;
+      border: none;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .step-title h3 {
+      margin: 0;
+      font-size: 19px;
+    }
+    .try-break {
+      background: #fef9f0;
+      border: 1px solid #e8dcc8;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .try-break h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" class="article">
+    <div class="page-hero">
+      <div class="wrap">
+        <a class="back-link" href="/aip/">&larr; AIP</a>
+        <h1>Quickstart: Agent Identity in 5 Minutes</h1>
+        <p class="hero-sub">Install AIP, generate a keypair, create a signed token, and verify it. By the end you will have a working agent identity that produces MCP-compatible auth headers.</p>
+      </div>
+    </div>
+
+    <div class="wrap wrap--narrow">
+
+      <p style="font-family: var(--mono); font-size: 13px; color: var(--muted); margin-bottom: 32px;">Prerequisites: Python 3.10+</p>
+
+      <!-- Step 1 -->
+      <div class="step-title">
+        <span class="step-num">1</span>
+        <h3>Install</h3>
+      </div>
+
+      <p>Pick your framework, or install the core SDK directly:</p>
+
+      <div class="install-cmd"><code>pip install aip-agents[crewai]</code></div>
+
+      <p style="font-size: 14px; color: var(--muted);">Or: <code>aip-agents[adk]</code>, <code>aip-agents[langchain]</code>, <code>aip-agents[all]</code>, or just <code>agent-identity-protocol</code> for the core.</p>
+
+      <!-- Step 2 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">2</span>
+        <h3>Generate a keypair</h3>
+      </div>
+
+      <p>Every agent identity starts with an Ed25519 keypair:</p>
+
+<pre><code>from aip_core.crypto import KeyPair
+
+kp = KeyPair.generate()
+print(f"Public key: {kp.public_key_multibase()}")
+print(f"AIP ID:     aip:key:ed25519:{kp.public_key_multibase()}")</code></pre>
+
+<pre class="output-block"><code>Public key: z6Mkf5rGM...
+AIP ID:     aip:key:ed25519:z6Mkf5rGM...</code></pre>
+
+      <p>This is a self-certifying identity. No DNS, no certificate authority. The public key <em>is</em> the identity. For production, you can use DNS-based identities (<code>aip:web:yourcompany.com/agent</code>) with identity documents.</p>
+
+      <!-- Step 3 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">3</span>
+        <h3>Create a signed token</h3>
+      </div>
+
+      <p>A compact token (JWT + EdDSA) carries the agent's identity, scope, and budget:</p>
+
+<pre><code>from aip_token.claims import AipClaims
+from aip_token.compact import CompactToken
+import time
+
+claims = AipClaims(
+    iss="aip:key:ed25519:" + kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/search",
+    scope=["tool:search"],
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()),
+    exp=int(time.time()) + 3600,  # 1 hour
+)
+token = CompactToken.create(claims, kp)
+print(f"Token: {token[:60]}...")</code></pre>
+
+<pre class="output-block"><code>Token: eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpc3MiOi...</code></pre>
+
+      <p>This token says: "I am <code>aip:key:ed25519:z6Mkf5...</code>, I want to call <code>tool:search</code> on <code>example.com/tools/search</code>, my budget is $1.00, and this token expires in one hour."</p>
+
+      <!-- Step 4 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">4</span>
+        <h3>Verify it</h3>
+      </div>
+
+      <p>The MCP server (or any verifier) checks the signature, expiry, and scope:</p>
+
+<pre><code>verified = CompactToken.verify(token, kp.public_key_bytes())
+print(f"Issuer: {verified.iss}")
+print(f"Scope:  {verified.scope}")
+print(f"Budget: ${verified.budget_usd}")</code></pre>
+
+<pre class="output-block"><code>Issuer: aip:key:ed25519:z6Mkf5rGM...
+Scope:  ['tool:search']
+Budget: $1.0</code></pre>
+
+      <!-- Step 5 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">5</span>
+        <h3>Send it to an MCP server</h3>
+      </div>
+
+      <p>AIP tokens travel as <code>X-AIP-Token</code> headers:</p>
+
+<pre><code>import httpx
+
+headers = {"X-AIP-Token": token}
+response = httpx.post(
+    "http://localhost:3000/mcp/tools/search",
+    headers=headers,
+    json={"query": "latest research on agent identity"}
+)</code></pre>
+
+      <p>The MCP server extracts the token from the header, verifies the signature against a trusted public key, checks that <code>tool:search</code> is in the token's scope, and either serves the request or returns 401.</p>
+
+      <!-- Try to break it -->
+      <div class="try-break" style="margin-top: 48px;">
+        <h4>Try to break it</h4>
+        <p>Understanding what AIP rejects is as important as what it accepts.</p>
+
+        <p><strong>Wrong scope:</strong></p>
+<pre><code># Token is scoped to ["tool:search"], but we try "tool:email"
+wrong_claims = AipClaims(
+    iss="aip:key:ed25519:" + kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/email",
+    scope=["tool:email"],  # not authorized
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()),
+    exp=int(time.time()) + 3600,
+)
+# Server rejects: scope mismatch</code></pre>
+
+        <p><strong>Expired token:</strong></p>
+<pre><code># Token expired 10 seconds ago
+expired_claims = AipClaims(
+    iss="aip:key:ed25519:" + kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/search",
+    scope=["tool:search"],
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()) - 3610,
+    exp=int(time.time()) - 10,  # already expired
+)
+expired_token = CompactToken.create(expired_claims, kp)
+# CompactToken.verify raises: token expired</code></pre>
+
+        <p><strong>Tampered token:</strong></p>
+<pre><code># Flip a character in the token
+tampered = token[:-5] + "XXXXX"
+# CompactToken.verify raises: signature verification failed</code></pre>
+      </div>
+
+      <!-- Next steps -->
+      <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+        <h3>Next steps</h3>
+        <ul style="line-height: 2;">
+          <li><a href="https://sunilprakash.com/writing/agent-identity-crewai/">CrewAI integration guide</a> -- add AIP to an existing CrewAI application</li>
+          <li><a href="https://github.com/sunilp/aip/tree/master/examples/multi-agent-delegation">Multi-agent delegation example</a> -- 3-hop delegation chain with scope attenuation</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/docs/guide-delegation.md">Delegation guide</a> -- chained tokens, policy profiles, Datalog</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/SPEC.md">Full specification</a> -- protocol details for implementers</li>
+          <li><a href="https://arxiv.org/abs/2603.24775">Read the paper</a> -- design rationale, experiments, adversarial evaluation</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
