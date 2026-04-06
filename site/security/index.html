@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="AIP security model: threat model, what AIP defends against, the security self-audit, token hygiene recommendations, and responsible disclosure." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="AIP Security Model" />
+  <meta property="og:description" content="What AIP defends against, what it does not, and how the security self-audit works." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/security/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIP Security Model" />
+  <meta name="twitter:description" content="What AIP defends against, what it does not, and how the security self-audit works." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/security/" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>AIP Security Model -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "AIP Security Model",
+    "author": { "@type": "Person", "name": "Sunil Prakash" },
+    "datePublished": "2026-04-07",
+    "description": "What AIP defends against, what it does not, and how the security self-audit works."
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .output-block {
+      background: #1a1a1a;
+      color: #c8c8c8;
+      border: none;
+    }
+    .threat-item {
+      border-left: 3px solid var(--text);
+      padding: 16px 20px;
+      margin: 16px 0;
+      background: #fafaf8;
+    }
+    .threat-item h4 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+    .threat-item p {
+      margin: 0;
+      font-size: 15px;
+      color: var(--muted);
+    }
+    .out-of-scope-item {
+      border-left: 3px solid #c8c8c0;
+      padding: 16px 20px;
+      margin: 16px 0;
+      background: #fafaf8;
+    }
+    .out-of-scope-item h4 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+    .out-of-scope-item p {
+      margin: 0;
+      font-size: 15px;
+      color: var(--muted);
+    }
+    .hygiene-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .hygiene-list li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+    }
+    .hygiene-list li:last-child {
+      border-bottom: none;
+    }
+    .hygiene-list li strong {
+      display: inline-block;
+      min-width: 180px;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 24px 0;
+    }
+    .comparison-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .comparison-table td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .comparison-table tr:nth-child(even) td {
+      background: #fafaf8;
+    }
+    .disclosure-box {
+      background: #fef9f0;
+      border: 1px solid #e8dcc8;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .disclosure-box h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" class="article">
+    <div class="page-hero">
+      <div class="wrap">
+        <a class="back-link" href="/aip/">&larr; AIP</a>
+        <h1>AIP Security Model</h1>
+        <p class="hero-sub">What AIP defends against, what it does not, and how the security self-audit works.</p>
+      </div>
+    </div>
+
+    <div class="wrap wrap--narrow">
+
+      <!-- Threat model -->
+      <h2>Threat model</h2>
+      <p>AIP is designed to address specific threats in multi-agent systems communicating over MCP. The following are explicit design targets.</p>
+
+      <div class="threat-item">
+        <h4>Agent impersonation</h4>
+        <p>Ed25519 signatures prove identity. A token signed by Agent A cannot be forged by Agent B without access to Agent A's private key.</p>
+      </div>
+
+      <div class="threat-item">
+        <h4>Scope escalation</h4>
+        <p>Delegation chains are append-only. Each hop can only narrow scope -- fewer tools, lower budget, shorter TTL -- never widen it. A delegated agent cannot grant itself permissions its parent did not have.</p>
+      </div>
+
+      <div class="threat-item">
+        <h4>Delegation abuse</h4>
+        <p>Depth limits cap how far delegation chains can extend. Budget ceilings prevent runaway spending. Both are enforced cryptographically, not by convention.</p>
+      </div>
+
+      <div class="threat-item">
+        <h4>Replay attacks</h4>
+        <p>Short-lived tokens (recommended TTL under 1 hour) with expiry checking prevent replayed tokens from being accepted after their window. No revocation lists required.</p>
+      </div>
+
+      <div class="threat-item">
+        <h4>Token tampering</h4>
+        <p>Any modification to a compact (JWT) or chained (Biscuit) token invalidates the cryptographic signature. The verifier detects the tampering before processing the claims.</p>
+      </div>
+
+      <div class="threat-item">
+        <h4>Chain integrity</h4>
+        <p>In chained tokens, every block in the delegation chain is independently signed. A missing, reordered, or modified intermediate block breaks the entire chain. There is no way to silently drop a delegation step.</p>
+      </div>
+
+      <!-- What AIP does NOT defend against -->
+      <h2 style="margin-top: 48px;">What AIP does not defend against</h2>
+      <p>Honest security documentation includes the limits. These are outside AIP's threat model.</p>
+
+      <div class="out-of-scope-item">
+        <h4>Compromised runtime</h4>
+        <p>If the agent's process is compromised, the attacker has access to the private key. AIP cannot protect keys from an attacker with process-level access.</p>
+      </div>
+
+      <div class="out-of-scope-item">
+        <h4>Key exfiltration</h4>
+        <p>AIP does not manage key storage. If keys are stored insecurely (plaintext files, unencrypted environment variables), they can be stolen. Key management is the operator's responsibility.</p>
+      </div>
+
+      <div class="out-of-scope-item">
+        <h4>Side-channel attacks</h4>
+        <p>Timing attacks on token verification are not mitigated. AIP defers to the underlying cryptographic libraries (<code>cryptography</code>, <code>ed25519-dalek</code>) for constant-time guarantees.</p>
+      </div>
+
+      <div class="out-of-scope-item">
+        <h4>Malicious authorized agents</h4>
+        <p>If an agent is authorized to call a tool, AIP cannot prevent it from misusing that access within its granted scope. Authorization is not intent verification.</p>
+      </div>
+
+      <div class="out-of-scope-item">
+        <h4>Network-level attacks</h4>
+        <p>AIP assumes TLS for transport. Without TLS, tokens can be intercepted and replayed within their TTL window. Always deploy behind TLS.</p>
+      </div>
+
+      <!-- Security self-audit -->
+      <h2 style="margin-top: 48px;">Security self-audit</h2>
+      <p>The AIP MCP proxy runs a security self-audit on every token verification. This goes beyond simple validity checks (signature, expiry, scope) to flag tokens that are technically valid but hygienically problematic.</p>
+
+      <p>The audit checks:</p>
+      <ul style="line-height: 2;">
+        <li><strong>TTL hygiene</strong> -- warns if the token's lifetime exceeds 1 hour</li>
+        <li><strong>Empty scope</strong> -- hard error; a token that authorizes nothing is a misconfiguration</li>
+        <li><strong>Wildcard scope</strong> -- warns if <code>*</code> appears in the scope list</li>
+        <li><strong>High budget</strong> -- warns if budget exceeds $10.00 (compact) or $100.00 (chained)</li>
+        <li><strong>Delegation depth</strong> -- warns if the chain exceeds depth 5</li>
+      </ul>
+
+      <p>The audit returns structured JSON with three fields: <code>passed</code> (boolean), <code>warnings</code> (list), and <code>errors</code> (list). Errors fail the token; warnings are logged but do not block the request by default.</p>
+
+      <p>Example audit result for a clean token:</p>
+
+<pre class="output-block"><code>{
+  "passed": true,
+  "warnings": [],
+  "errors": []
+}</code></pre>
+
+      <p>Example audit result for a token with hygiene issues:</p>
+
+<pre class="output-block"><code>{
+  "passed": true,
+  "warnings": [
+    "TTL is 86400s (24h 0m), exceeds recommended maximum of 3600s",
+    "Wildcard scope '*' grants unrestricted access",
+    "Budget $50.00 exceeds recommended maximum of $10.00"
+  ],
+  "errors": []
+}</code></pre>
+
+      <p>Example audit result for an invalid token (empty scope):</p>
+
+<pre class="output-block"><code>{
+  "passed": false,
+  "warnings": [],
+  "errors": [
+    "Empty scope: token authorizes no actions"
+  ]
+}</code></pre>
+
+      <p>To run the audit directly:</p>
+
+<pre><code>from aip_mcp.audit import audit_compact, audit_chained
+
+result = audit_compact(verified_token)
+print(result.to_dict())</code></pre>
+
+      <!-- Token hygiene recommendations -->
+      <h2 style="margin-top: 48px;">Token hygiene recommendations</h2>
+      <p>Passing the self-audit is the minimum bar. These practices reduce the blast radius of any compromise.</p>
+
+      <ul class="hygiene-list">
+        <li><strong>Keep TTL under 1 hour.</strong> Short-lived tokens limit replay windows. For batch jobs, mint a new token per task rather than using a long-lived one.</li>
+        <li><strong>Use narrow scopes.</strong> List specific tools (<code>tool:search</code>, <code>tool:summarize</code>), not wildcards. A token should authorize exactly what the task requires.</li>
+        <li><strong>Set appropriate budget ceilings.</strong> Match the budget to the task. A search agent does not need a $50 budget. Tight ceilings contain runaway spending from bugs or prompt injection.</li>
+        <li><strong>Limit delegation depth.</strong> If your workflow needs one hop, set <code>max_depth=1</code>. Do not leave depth unconstrained unless the architecture genuinely requires it.</li>
+        <li><strong>Rotate keys periodically.</strong> Ed25519 keypairs are cheap to generate. Rotate agent keys on a schedule aligned with your security policy. DNS-based identities (<code>aip:web:</code>) make rotation seamless via identity document updates.</li>
+      </ul>
+
+      <!-- Delegation chain security -->
+      <h2 style="margin-top: 48px;">Delegation chain security</h2>
+      <p>Chained tokens (Biscuit format) are the primary mechanism for multi-hop agent delegation. Their security rests on one invariant: blocks are append-only and each block can only restrict, never expand, the permissions of the previous block.</p>
+
+      <p><strong>Scope attenuation example:</strong></p>
+      <p>An orchestrator agent holds a token with scope <code>[search, email, browse]</code>. It delegates to a researcher agent, attenuating scope to <code>[search]</code> only. The researcher forwards that token to a tool server. The tool server verifies the full chain:</p>
+
+<pre><code># Orchestrator token (authority block)
+scope: ["tool:search", "tool:email", "tool:browse"]
+budget: $5.00
+
+# Researcher delegation (block 1 -- added by orchestrator)
+scope: ["tool:search"]          # narrowed
+budget: $1.00                   # narrowed
+
+# Tool server verification
+# Full chain verified: orchestrator signed block 0,
+# orchestrator signed the attenuation in block 1.
+# Researcher cannot add back tool:email -- adding it would
+# require a valid signature from the orchestrator.</code></pre>
+
+      <p><strong>Budget narrowing:</strong></p>
+<pre><code># Orchestrator: $5.00
+# -> Researcher: $1.00
+# -> Sub-agent: $0.50
+#
+# Each delegation block locks in a tighter ceiling.
+# The tool server sees $0.50 as the effective budget.</code></pre>
+
+      <p><strong>What happens when someone tries to widen scope:</strong> any modification to a Biscuit block requires re-signing with the key that created that block. An attacker without the orchestrator's private key cannot add permissions to an existing delegation block. Attempting to insert or modify a block produces a chain where the Biscuit signature verification fails immediately.</p>
+
+      <!-- Comparison with OAuth/OIDC -->
+      <h2 style="margin-top: 48px;">Comparison with OAuth/OIDC</h2>
+      <p>OAuth 2.1 and OIDC are the dominant identity protocols for web services. AIP is not a replacement -- it addresses a different problem: cryptographic identity and multi-hop delegation for agent-to-agent calls in MCP contexts.</p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th>OAuth 2.1</th>
+            <th>AIP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Identity</td>
+            <td>Opaque tokens or JWT</td>
+            <td>Ed25519 keypairs (self-certifying)</td>
+          </tr>
+          <tr>
+            <td>Delegation</td>
+            <td>Not natively supported</td>
+            <td>Cryptographic chain (Biscuit blocks)</td>
+          </tr>
+          <tr>
+            <td>Multi-hop</td>
+            <td>No</td>
+            <td>Yes -- each hop adds a signed block</td>
+          </tr>
+          <tr>
+            <td>Scope model</td>
+            <td>Opaque string scopes</td>
+            <td>Datalog policies (auditable, composable)</td>
+          </tr>
+          <tr>
+            <td>Revocation</td>
+            <td>Token revocation lists</td>
+            <td>Short-lived tokens (no revocation lists)</td>
+          </tr>
+          <tr>
+            <td>MCP support</td>
+            <td>Single-hop only</td>
+            <td>Full delegation chain across MCP hops</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="font-size: 14px; color: var(--muted);">OAuth 2.1 works well for user-facing authorization flows. AIP targets machine-to-machine agent identity where chains of delegation need to be verifiable end-to-end.</p>
+
+      <!-- Responsible disclosure -->
+      <div class="disclosure-box" style="margin-top: 48px;">
+        <h4>Responsible disclosure</h4>
+        <p>If you discover a security vulnerability in AIP, please report it privately. Do not open a public GitHub issue.</p>
+        <p><strong>Email:</strong> <a href="mailto:sunil@sunilprakash.com">sunil@sunilprakash.com</a></p>
+        <p>Please include a description of the vulnerability, steps to reproduce, affected versions, and potential impact. Receipt will be acknowledged within 48 hours; critical issues will receive a fix or mitigation within 7 days.</p>
+        <p style="margin-bottom: 0;"><a href="https://github.com/sunilp/aip/blob/master/SECURITY.md" target="_blank" rel="noopener">Read the full security policy on GitHub &rarr;</a></p>
+      </div>
+
+      <!-- Footer nav -->
+      <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+        <h3>Related</h3>
+        <ul style="line-height: 2;">
+          <li><a href="/aip/quickstart/">Quickstart</a> -- add AIP to an agent in 5 minutes</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/docs/guide-delegation.md" target="_blank" rel="noopener">Delegation guide</a> -- chained tokens, policy profiles, Datalog</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/SPEC.md" target="_blank" rel="noopener">Full specification</a> -- protocol details for implementers</li>
+          <li><a href="https://arxiv.org/abs/2603.24775" target="_blank" rel="noopener">Read the paper</a> -- design rationale, experiments, adversarial evaluation</li>
+        </ul>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

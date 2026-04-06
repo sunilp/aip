@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Secure LangChain executors with cryptographic identity. Multi-agent auth for supervisor patterns." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="AIP + LangChain: Cryptographic Identity for Executors and Supervisors" />
+  <meta property="og:description" content="Secure LangChain executors with cryptographic identity. Multi-agent auth for supervisor patterns." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/guides/langchain/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIP + LangChain: Cryptographic Identity for Executors and Supervisors" />
+  <meta name="twitter:description" content="Secure LangChain executors with cryptographic identity. Multi-agent auth for supervisor patterns." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/guides/langchain/" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>AIP + LangChain Guide -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Add Cryptographic Identity to Your LangChain Agents",
+    "author": { "@type": "Person", "name": "Sunil Prakash" },
+    "datePublished": "2026-04-07",
+    "description": "Secure LangChain executors with cryptographic identity. Multi-agent auth for supervisor patterns."
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .install-cmd {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border: none;
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .install-cmd code { background: none; color: inherit; padding: 0; }
+    .output-block {
+      background: #1a1a1a;
+      color: #c8c8c8;
+      border: none;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .step-title h3 {
+      margin: 0;
+      font-size: 19px;
+    }
+    .try-break {
+      background: #fef9f0;
+      border: 1px solid #e8dcc8;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .try-break h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" class="article">
+    <div class="page-hero">
+      <div class="wrap">
+        <a class="back-link" href="/aip/">&larr; AIP</a>
+        <h1>Add Cryptographic Identity to Your LangChain Agents</h1>
+        <p class="hero-sub">Wire AIP into a LangChain executor or supervisor pattern: each agent gets a signed identity, tool calls carry verifiable auth headers, and delegation between agents is cryptographically enforced.</p>
+      </div>
+    </div>
+
+    <div class="wrap wrap--narrow">
+
+      <p style="font-family: var(--mono); font-size: 13px; color: var(--muted); margin-bottom: 32px;">Prerequisites: Python 3.10+, <code>langchain</code> installed</p>
+
+      <!-- The problem -->
+      <h2 style="font-size: 22px; margin-bottom: 16px;">The problem</h2>
+      <p>Your LangChain executors call tools anonymously. When a supervisor routes a task to a specialist agent, no identity verification happens. The tool server has no way to confirm which agent is making the request, let alone whether that agent was authorized to do so. If a tool server is compromised, any agent can impersonate any other. There is no audit trail of who authorized what.</p>
+      <p>AIP gives each executor a self-certifying Ed25519 keypair and an AIP identifier. Every tool call carries a signed token that records the issuing agent, the permitted scope, the budget ceiling, and the delegation depth. The tool server verifies the signature before serving the request. If the token is missing, expired, or out of scope, the request is rejected.</p>
+
+      <!-- Step 1 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">1</span>
+        <h3>Install</h3>
+      </div>
+
+      <p>Install the LangChain adapter for AIP:</p>
+
+      <div class="install-cmd"><code>pip install aip-agents[langchain]</code></div>
+
+      <p style="font-size: 14px; color: var(--muted);">This pulls in <code>agent-identity-protocol</code> (core SDK) and the LangChain integration layer. For other frameworks: <code>aip-agents[crewai]</code>, <code>aip-agents[adk]</code>, or <code>aip-agents[all]</code>.</p>
+
+      <!-- Step 2 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">2</span>
+        <h3>Add AIP to your app</h3>
+      </div>
+
+      <p>Create a plugin, build your executor as normal, then register it with a name. The name becomes the agent's AIP identity key:</p>
+
+<pre><code>from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from aip_agents import AIPConfig
+from aip_agents.adapters.langchain import AIPLangChainPlugin
+
+# Create the plugin
+plugin = AIPLangChainPlugin(AIPConfig(app_name="my-langchain-app"))
+
+# Build your executor as normal
+@tool
+def search(query: str) -> str:
+    """Search for information."""
+    return f"Results for: {query}"
+
+llm = ChatOpenAI(model="gpt-4o")
+agent = create_openai_tools_agent(llm, [search], prompt)
+executor = AgentExecutor(agent=agent, tools=[search])
+
+# Register AIP -- this is the only line you add
+plugin.register(executor, name="researcher")
+
+# Get auth headers for outgoing tool calls
+headers = plugin.get_tool_call_headers("researcher")
+print(headers)
+# {"X-AIP-Token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."}</code></pre>
+
+      <!-- Step 3 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">3</span>
+        <h3>What just happened</h3>
+      </div>
+
+      <p>When you called <code>plugin.register(executor, name="researcher")</code>, AIP:</p>
+      <ul style="line-height: 1.9;">
+        <li>Generated an Ed25519 keypair for the researcher identity</li>
+        <li>Assigned it an AIP identifier (<code>aip:key:ed25519:z6Mkf5...</code>)</li>
+        <li>Extracted the tool names from the executor and used them as the token scope</li>
+        <li>Issued a signed compact token and stored it for retrieval</li>
+      </ul>
+
+      <p>The token flow looks like this:</p>
+
+<pre><code>Agent (researcher)
+  --> AIPLangChainPlugin.get_tool_call_headers("researcher")
+      --> returns {"X-AIP-Token": "&lt;signed-jwt&gt;"}
+          --> outgoing request to MCP server
+              --> server verifies signature + scope
+              --> serves request or returns 401</code></pre>
+
+      <p>You can inspect the assigned scope for any registered agent:</p>
+
+<pre><code>scope = plugin.get_agent_scope("researcher")
+print(f"Scope: {scope}")
+# Scope: ['search']  -- derived from the executor's tool list</code></pre>
+
+      <!-- Step 4 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">4</span>
+        <h3>Multi-agent delegation</h3>
+      </div>
+
+      <p>For supervisor patterns, register all agents at once with <code>register_agents()</code>, then create delegation tokens between them. The delegation token narrows scope from supervisor to specialist:</p>
+
+<pre><code">from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
+from aip_agents import AIPConfig
+from aip_agents.adapters.langchain import AIPLangChainPlugin
+
+plugin = AIPLangChainPlugin(AIPConfig(
+    app_name="my-langchain-app",
+    log_tokens=True,  # prints identity and delegation events
+))
+
+# Build individual executors
+@tool
+def search(query: str) -> str:
+    """Search for information."""
+    return f"Results for: {query}"
+
+@tool
+def write(content: str) -> str:
+    """Write a document."""
+    return f"Written: {content}"
+
+llm = ChatOpenAI(model="gpt-4o")
+
+researcher_executor = AgentExecutor(
+    agent=create_openai_tools_agent(llm, [search], researcher_prompt),
+    tools=[search],
+)
+writer_executor = AgentExecutor(
+    agent=create_openai_tools_agent(llm, [write], writer_prompt),
+    tools=[write],
+)
+
+# Register all agents at once (supervisor pattern)
+plugin.register_agents({
+    "researcher": researcher_executor,
+    "writer": writer_executor,
+})
+
+# researcher delegates to writer with attenuated scope
+delegation_token = plugin.create_delegation(
+    parent_name="researcher",
+    child_name="writer",
+    task_description="Write a summary of the research findings",
+    scope=["write"],  # narrower than researcher's full scope
+)
+
+depth = plugin.token_manager.chain_depth(delegation_token)
+print(f"Delegation chain depth: {depth}")
+# Delegation chain depth: 1</code></pre>
+
+      <p>Each call to <code>create_delegation()</code> records the parent, the child, and the attenuated scope. The child's token is updated in place, so subsequent calls to <code>get_tool_call_headers("writer")</code> return the delegated token rather than the original.</p>
+
+      <!-- Try to break it -->
+      <div class="try-break" style="margin-top: 48px;">
+        <h4>Try to break it</h4>
+        <p>Understanding what AIP rejects is as important as what it accepts.</p>
+
+        <p><strong>Tamper with the token:</strong></p>
+<pre><code>from aip_token.compact import CompactToken
+
+token = plugin.get_tool_call_headers("researcher")["X-AIP-Token"]
+tampered = token[:-5] + "XXXXX"
+
+# On the server side:
+# CompactToken.verify(tampered, public_key_bytes) raises:
+#   SignatureError: signature verification failed</code></pre>
+
+        <p><strong>Use a token outside its scope:</strong></p>
+<pre><code># researcher token is scoped to ["search"]
+# Trying to call a tool outside that scope:
+#
+# Server checks: "tool:email" not in token.scope
+# Server returns: 401 Unauthorized -- scope mismatch</code></pre>
+
+        <p><strong>Expire a token:</strong></p>
+<pre><code">from aip_agents import AIPConfig
+from aip_agents.adapters.langchain import AIPLangChainPlugin
+
+# Issue a token that expired 10 seconds ago
+plugin = AIPLangChainPlugin(AIPConfig(
+    app_name="my-langchain-app",
+    token_ttl_seconds=-10,  # negative TTL = already expired
+))
+plugin.register(executor, name="researcher")
+
+token = plugin.get_tool_call_headers("researcher")["X-AIP-Token"]
+# CompactToken.verify raises: TokenExpiredError</code></pre>
+      </div>
+
+      <!-- Next steps -->
+      <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+        <h3>Next steps</h3>
+        <ul style="line-height: 2;">
+          <li><a href="/aip/guides/crewai/">CrewAI integration guide</a> -- role-based identity for CrewAI crews</li>
+          <li><a href="/aip/guides/adk/">Google ADK integration guide</a> -- identity for hierarchical ADK agent trees</li>
+          <li><a href="/aip/guides/mcp-proxy/">MCP proxy guide</a> -- enforce AIP at the transport layer</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/SPEC.md">Full specification</a> -- protocol details for implementers</li>
+          <li><a href="https://arxiv.org/abs/2603.24775">Read the paper</a> -- design rationale, experiments, adversarial evaluation</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
