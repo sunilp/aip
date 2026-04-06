@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Protect any MCP server with AIP token verification. Zero code changes to your server. One command to start." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="MCP Auth Proxy: Drop-in Authentication for Any MCP Server" />
+  <meta property="og:description" content="Protect any MCP server with AIP token verification. Zero code changes to your server. One command to start." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/guides/mcp-proxy/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MCP Auth Proxy: Drop-in Authentication for Any MCP Server" />
+  <meta name="twitter:description" content="Protect any MCP server with AIP token verification. Zero code changes to your server." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/guides/mcp-proxy/" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>MCP Auth Proxy -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "MCP Auth Proxy: Drop-in Authentication for Any MCP Server",
+    "author": { "@type": "Person", "name": "Sunil Prakash" },
+    "datePublished": "2026-04-07",
+    "description": "Protect any MCP server with AIP token verification. Zero code changes to your server. One command to start."
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .install-cmd {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border: none;
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .install-cmd code { background: none; color: inherit; padding: 0; }
+    .output-block {
+      background: #1a1a1a;
+      color: #c8c8c8;
+      border: none;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .step-title h3 {
+      margin: 0;
+      font-size: 19px;
+    }
+    .try-break {
+      background: #fef9f0;
+      border: 1px solid #e8dcc8;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .try-break h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" class="article">
+    <div class="page-hero">
+      <div class="wrap">
+        <a class="back-link" href="/aip/">&larr; AIP</a>
+        <h1>MCP Auth Proxy: Drop-in Authentication for Any MCP Server</h1>
+        <p class="hero-sub">Protect any MCP server with AIP token verification. Zero code changes to your server. One command to start.</p>
+      </div>
+    </div>
+
+    <div class="wrap wrap--narrow">
+
+      <!-- The Problem -->
+      <h2>The problem</h2>
+
+      <p>MCP servers accept anonymous requests. Any client can call any tool. There is no way to know who is calling or whether they are authorized.</p>
+
+      <p>OAuth 2.1 was added to the MCP spec, but it only covers single-hop. When agents delegate to other agents, the auth chain disappears. A subagent three hops down the delegation tree can call the same tools as the orchestrator, with no record of how it got there.</p>
+
+      <p>The MCP auth proxy solves this without touching your server. It sits in front of any MCP server and verifies AIP tokens on every request. Your server sees only pre-verified calls with a full delegation audit trail attached.</p>
+
+      <!-- Step 1: Install -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">1</span>
+        <h3>Install</h3>
+      </div>
+
+      <p>Install the AIP SDK, which includes the proxy binary:</p>
+
+      <div class="install-cmd"><code>pip install agent-identity-protocol</code></div>
+
+      <p>Verify the proxy is available:</p>
+
+      <div class="install-cmd"><code>aip-proxy --help</code></div>
+
+<pre class="output-block"><code>Usage: aip-proxy [OPTIONS]
+
+  AIP authentication proxy for MCP servers.
+
+Options:
+  --upstream TEXT    Upstream MCP server URL  [required]
+  --port INTEGER     Port to listen on (default: 8080)
+  --trust-key TEXT   Trusted public key in multibase format  [required]
+  --config TEXT      Path to TOML config file
+  --help             Show this message and exit.</code></pre>
+
+      <!-- Step 2: Start the proxy -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">2</span>
+        <h3>Start the proxy</h3>
+      </div>
+
+      <p>Point the proxy at your upstream MCP server and give it a trusted public key:</p>
+
+      <div class="install-cmd"><code>aip-proxy --upstream http://localhost:3000 --port 8080 --trust-key z6Mkf...</code></div>
+
+      <p>The proxy sits between your MCP client and server, verifying every request. Your MCP server at <code>localhost:3000</code> requires no changes. Clients now connect to <code>localhost:8080</code> instead.</p>
+
+<pre class="output-block"><code>AIP proxy listening on :8080
+Upstream: http://localhost:3000
+Trust key: z6Mkf...
+Audit: enabled</code></pre>
+
+      <!-- Step 3: Make an authenticated request -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">3</span>
+        <h3>Make an authenticated request</h3>
+      </div>
+
+      <p>Create an AIP token and send it via the <code>X-AIP-Token</code> header to the proxy port:</p>
+
+<pre><code>from aip_core.crypto import KeyPair
+from aip_token.claims import AipClaims
+from aip_token.compact import CompactToken
+import httpx
+import time
+
+kp = KeyPair.generate()
+
+claims = AipClaims(
+    iss="aip:key:ed25519:" + kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/search",
+    scope=["tool:search"],
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()),
+    exp=int(time.time()) + 3600,
+)
+token = CompactToken.create(claims, kp)
+
+# Send to the proxy, not the upstream server directly
+response = httpx.post(
+    "http://localhost:8080/mcp/tools/search",
+    headers={"X-AIP-Token": token},
+    json={"query": "latest research on agent identity"}
+)
+print(response.status_code)</code></pre>
+
+<pre class="output-block"><code>200</code></pre>
+
+      <p>On a valid token, the proxy verifies the signature, checks scope and expiry, then forwards the request to the upstream server at <code>localhost:3000</code>. The upstream sees a normal HTTP request with an added <code>X-AIP-Verified: true</code> header.</p>
+
+      <!-- What gets rejected -->
+      <div class="try-break" style="margin-top: 48px;">
+        <h4>What gets rejected</h4>
+        <p>Understanding what the proxy rejects is as important as what it accepts.</p>
+
+        <p><strong>Missing token (401):</strong></p>
+<pre><code># No X-AIP-Token header at all
+response = httpx.post(
+    "http://localhost:8080/mcp/tools/search",
+    json={"query": "test"}
+)
+# 401 Unauthorized: missing X-AIP-Token header</code></pre>
+
+        <p><strong>Wrong key (401):</strong></p>
+<pre><code># Token signed by a different keypair
+other_kp = KeyPair.generate()
+claims = AipClaims(
+    iss="aip:key:ed25519:" + other_kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/search",
+    scope=["tool:search"],
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()),
+    exp=int(time.time()) + 3600,
+)
+token = CompactToken.create(claims, other_kp)
+response = httpx.post(
+    "http://localhost:8080/mcp/tools/search",
+    headers={"X-AIP-Token": token},
+    json={"query": "test"}
+)
+# 401 Unauthorized: issuer not in trust set</code></pre>
+
+        <p><strong>Expired token (401):</strong></p>
+<pre><code># Token that expired 10 seconds ago
+claims = AipClaims(
+    iss="aip:key:ed25519:" + kp.public_key_multibase(),
+    sub="aip:web:example.com/tools/search",
+    scope=["tool:search"],
+    budget_usd=1.0,
+    max_depth=0,
+    iat=int(time.time()) - 3610,
+    exp=int(time.time()) - 10,
+)
+expired_token = CompactToken.create(claims, kp)
+response = httpx.post(
+    "http://localhost:8080/mcp/tools/search",
+    headers={"X-AIP-Token": expired_token},
+    json={"query": "test"}
+)
+# 401 Unauthorized: token expired</code></pre>
+      </div>
+
+      <!-- Security self-audit -->
+      <h2 style="margin-top: 48px;">Security self-audit</h2>
+
+      <p>The proxy does not just verify tokens. It audits them for hygiene problems and attaches a report to every response as an <code>X-AIP-Audit</code> header.</p>
+
+<pre class="output-block"><code>X-AIP-Audit: {"passed": true, "warnings": ["TTL is 7200s (2h 0m), exceeds recommended maximum of 3600s"], "errors": []}</code></pre>
+
+      <p>A request passes audit even with warnings. Warnings are informational: the token is valid but has characteristics that reduce security posture. Errors block the request entirely.</p>
+
+      <p>What the audit checks:</p>
+      <ul style="line-height: 2;">
+        <li><strong>TTL hygiene</strong> -- tokens with TTLs above the configured maximum generate a warning. Overly long-lived tokens increase the blast radius of a compromise.</li>
+        <li><strong>Empty or wildcard scope</strong> -- a token with no scope or <code>*</code> scope is flagged. Principle of least privilege applies to agents too.</li>
+        <li><strong>High budget</strong> -- tokens with <code>budget_usd</code> above the configured threshold generate a warning. Runaway spend from a compromised token is a real risk.</li>
+        <li><strong>Delegation chain depth</strong> -- deep delegation chains are harder to audit. The proxy tracks <code>max_depth</code> and warns when it approaches the configured ceiling.</li>
+      </ul>
+
+      <!-- Configuration -->
+      <h2 style="margin-top: 48px;">Configuration</h2>
+
+      <p>For production deployments, use a TOML config file instead of command-line flags:</p>
+
+<pre><code>[proxy]
+upstream = "http://localhost:3000"
+port = 8080
+trust_keys = ["z6Mkf..."]
+
+[audit]
+max_ttl_seconds = 1800
+max_budget_usd = 5.0
+
+[logging]
+log_file = "/var/log/aip-proxy.log"</code></pre>
+
+      <p>Start with the config file:</p>
+
+      <div class="install-cmd"><code>aip-proxy --config proxy.toml</code></div>
+
+      <p>The <code>[audit]</code> section controls what thresholds trigger warnings. Set <code>max_ttl_seconds = 1800</code> to flag any token with a TTL above 30 minutes. Set <code>max_budget_usd = 5.0</code> to flag tokens with budgets above $5. Both defaults are conservative; adjust for your threat model.</p>
+
+      <p>The <code>trust_keys</code> array accepts multiple keys. Add all agent public keys you want to authorize. Any token signed by a key not in this list is rejected with 401.</p>
+
+      <!-- Next steps -->
+      <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+        <h3>Next steps</h3>
+        <ul style="line-height: 2;">
+          <li><a href="https://sunilprakash.com/writing/agent-identity-crewai/">CrewAI integration guide</a> -- add AIP to an existing CrewAI application</li>
+          <li><a href="https://github.com/sunilp/aip/tree/master/examples/multi-agent-delegation">Multi-agent delegation example</a> -- 3-hop delegation chain with scope attenuation</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/SPEC.md">Full specification</a> -- protocol details for implementers</li>
+          <li><a href="https://arxiv.org/abs/2603.24775">Read the paper</a> -- design rationale, experiments, adversarial evaluation</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

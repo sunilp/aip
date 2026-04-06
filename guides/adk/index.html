@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Add cryptographic identity to Google ADK agent hierarchies. Delegation chains with scope attenuation." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="AIP + Google ADK: Cryptographic Identity for Agent Hierarchies" />
+  <meta property="og:description" content="Add cryptographic identity to Google ADK agent hierarchies. Delegation chains with scope attenuation." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/guides/adk/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIP + Google ADK: Cryptographic Identity for Agent Hierarchies" />
+  <meta name="twitter:description" content="Add cryptographic identity to Google ADK agent hierarchies. Delegation chains with scope attenuation." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/guides/adk/" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>AIP + Google ADK Guide -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Add Cryptographic Identity to Your Google ADK Agents",
+    "author": { "@type": "Person", "name": "Sunil Prakash" },
+    "datePublished": "2026-04-07",
+    "description": "Add cryptographic identity to Google ADK agent hierarchies. Delegation chains with scope attenuation."
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .install-cmd {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border: none;
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .install-cmd code { background: none; color: inherit; padding: 0; }
+    .output-block {
+      background: #1a1a1a;
+      color: #c8c8c8;
+      border: none;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .step-title h3 {
+      margin: 0;
+      font-size: 19px;
+    }
+    .try-break {
+      background: #fef9f0;
+      border: 1px solid #e8dcc8;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .try-break h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" class="article">
+    <div class="page-hero">
+      <div class="wrap">
+        <a class="back-link" href="/aip/">&larr; AIP</a>
+        <h1>Add Cryptographic Identity to Your Google ADK Agents</h1>
+        <p class="hero-sub">Wire AIP into a Google ADK agent hierarchy: the coordinator and every sub-agent get distinct cryptographic identities, delegation depth is enforced at the token level, and tool calls carry verifiable auth headers.</p>
+      </div>
+    </div>
+
+    <div class="wrap wrap--narrow">
+
+      <p style="font-family: var(--mono); font-size: 13px; color: var(--muted); margin-bottom: 32px;">Prerequisites: Python 3.10+, <code>google-adk</code> installed</p>
+
+      <!-- The problem -->
+      <h2 style="font-size: 22px; margin-bottom: 16px;">The problem</h2>
+      <p>Your ADK agents call tools anonymously. When the coordinator routes a task to a sub-agent, no identity verification happens. The tool server has no way to confirm which agent is making the request, let alone whether that agent was authorized to do so. If a tool server is compromised, any agent can impersonate any other. There is no audit trail of who authorized what.</p>
+      <p>AIP gives each agent a self-certifying Ed25519 keypair and an AIP identifier. Every tool call carries a signed token that records the issuing agent, the permitted scope, the budget ceiling, and the delegation depth. The tool server verifies the signature before serving the request. If the token is missing, expired, or out of scope, the request is rejected.</p>
+
+      <!-- Step 1 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">1</span>
+        <h3>Install</h3>
+      </div>
+
+      <p>Install the Google ADK adapter for AIP:</p>
+
+      <div class="install-cmd"><code>pip install aip-agents[adk]</code></div>
+
+      <p style="font-size: 14px; color: var(--muted);">This pulls in <code>agent-identity-protocol</code> (core SDK) and the ADK integration layer. For other frameworks: <code>aip-agents[crewai]</code>, <code>aip-agents[langchain]</code>, or <code>aip-agents[all]</code>.</p>
+
+      <!-- Step 2 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">2</span>
+        <h3>Add AIP to your app</h3>
+      </div>
+
+      <p>Create a plugin, build your agent tree as normal, wrap it in a Runner, then register. One call wires identity into the root agent and every sub-agent:</p>
+
+<pre><code>from google.adk import Agent, Runner
+from aip_agents import AIPConfig
+from aip_agents.adapters.adk import AIPAdkPlugin
+
+# Create the plugin
+plugin = AIPAdkPlugin(AIPConfig(app_name="my-adk-app"))
+
+# Define the root agent
+root_agent = Agent(
+    name="coordinator",
+    model="gemini-2.5-flash",
+    instruction="Route tasks to the appropriate sub-agent.",
+    description="Task coordinator",
+    tools=[],
+)
+
+# Register AIP -- this is the only line you add
+runner = Runner(agent=root_agent)
+plugin.register(runner)
+
+# Get auth headers for outgoing tool calls
+headers = plugin.get_tool_call_headers("specialist")
+print(headers)
+# {"X-AIP-Token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."}</code></pre>
+
+      <!-- Step 3 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">3</span>
+        <h3>What just happened</h3>
+      </div>
+
+      <p>When you called <code>plugin.register(runner)</code>, AIP walked the agent tree starting from the root and:</p>
+      <ul style="line-height: 1.9;">
+        <li>Generated an Ed25519 keypair for each agent in the hierarchy</li>
+        <li>Assigned each agent an AIP identifier (<code>aip:key:ed25519:z6Mkf5...</code>)</li>
+        <li>Issued a signed compact token scoped to that agent's tools and position in the tree</li>
+        <li>Stored the tokens so <code>get_tool_call_headers()</code> can retrieve them on demand</li>
+      </ul>
+
+      <p>The token flow looks like this:</p>
+
+<pre><code>Agent (coordinator)
+  --> AIPAdkPlugin.get_tool_call_headers("coordinator")
+      --> returns {"X-AIP-Token": "&lt;signed-jwt&gt;"}
+          --> outgoing request to MCP server
+              --> server verifies signature + scope
+              --> serves request or returns 401</code></pre>
+
+      <p>You can inspect the delegation depth for any agent by name:</p>
+
+<pre><code>depth = plugin.get_chain_depth("coordinator")
+print(f"coordinator depth: {depth}")
+# coordinator depth: 0  (root has no parent)</code></pre>
+
+      <!-- Step 4 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">4</span>
+        <h3>Multi-agent delegation</h3>
+      </div>
+
+      <p>ADK's <code>sub_agents</code> tree maps naturally onto AIP delegation chains. The coordinator gets depth 0; each sub-agent gets depth 1; their sub-agents get depth 2; and so on. Scope attenuates at each hop -- a sub-agent can only exercise a subset of the permissions the coordinator was granted:</p>
+
+<pre><code>from google.adk import Agent, Runner
+from aip_agents import AIPConfig
+from aip_agents.adapters.adk import AIPAdkPlugin
+
+plugin = AIPAdkPlugin(AIPConfig(
+    app_name="my-adk-app",
+    log_tokens=True,  # prints identity and delegation events
+))
+
+# Sub-agents
+summarizer = Agent(
+    name="summarizer",
+    model="gemini-2.5-flash",
+    instruction="Summarize the research findings concisely.",
+    description="Summarization specialist",
+    tools=[],
+)
+
+fact_checker = Agent(
+    name="fact_checker",
+    model="gemini-2.5-flash",
+    instruction="Verify claims against sources.",
+    description="Fact verification agent",
+    tools=[],
+)
+
+# Root agent with sub-agent tree
+coordinator = Agent(
+    name="coordinator",
+    model="gemini-2.5-flash",
+    instruction="Route tasks to the appropriate sub-agent.",
+    description="Task coordinator",
+    tools=[],
+    sub_agents=[summarizer, fact_checker],
+)
+
+runner = Runner(agent=coordinator)
+plugin.register(runner)
+
+# Inspect the delegation chain depths
+for name in ["coordinator", "summarizer", "fact_checker"]:
+    depth = plugin.get_chain_depth(name)
+    print(f"{name}: depth {depth}")
+# coordinator:  depth 0
+# summarizer:   depth 1
+# fact_checker: depth 1</code></pre>
+
+      <p>Set <code>max_depth</code> in <code>AIPConfig</code> to enforce a ceiling on delegation depth. Any token with a depth exceeding the limit is rejected by the verifier, preventing runaway delegation chains.</p>
+
+      <!-- Try to break it -->
+      <div class="try-break" style="margin-top: 48px;">
+        <h4>Try to break it</h4>
+        <p>Understanding what AIP rejects is as important as what it accepts.</p>
+
+        <p><strong>Tamper with the token:</strong></p>
+<pre><code>from aip_token.compact import CompactToken
+
+token = plugin.get_tool_call_headers("summarizer")["X-AIP-Token"]
+tampered = token[:-5] + "XXXXX"
+
+# On the server side:
+# CompactToken.verify(tampered, public_key_bytes) raises:
+#   SignatureError: signature verification failed</code></pre>
+
+        <p><strong>Use a token outside its scope:</strong></p>
+<pre><code># summarizer token is scoped to ["summarize", "fetch"]
+# Trying to call a tool outside that scope:
+#
+# Server checks: "tool:email" not in token.scope
+# Server returns: 401 Unauthorized -- scope mismatch</code></pre>
+
+        <p><strong>Exceed the delegation depth ceiling:</strong></p>
+<pre><code">from aip_agents import AIPConfig
+from aip_agents.adapters.adk import AIPAdkPlugin
+
+plugin = AIPAdkPlugin(AIPConfig(
+    app_name="my-adk-app",
+    max_depth=1,  # allow coordinator -> sub-agent, nothing deeper
+))
+
+# Any attempt to create a depth-2 delegation is rejected:
+#   DelegationError: max_depth exceeded (got 2, limit 1)</code></pre>
+      </div>
+
+      <!-- Next steps -->
+      <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+        <h3>Next steps</h3>
+        <ul style="line-height: 2;">
+          <li><a href="/aip/guides/crewai/">CrewAI integration guide</a> -- role-based identity for CrewAI crews</li>
+          <li><a href="/aip/guides/langchain/">LangChain integration guide</a> -- supervisor patterns with multi-agent auth</li>
+          <li><a href="/aip/guides/mcp-proxy/">MCP proxy guide</a> -- enforce AIP at the transport layer</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/SPEC.md">Full specification</a> -- protocol details for implementers</li>
+          <li><a href="https://arxiv.org/abs/2603.24775">Read the paper</a> -- design rationale, experiments, adversarial evaluation</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

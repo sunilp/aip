@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4KDCBS18GZ"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-4KDCBS18GZ');</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Add cryptographic identity to CrewAI agents. Scoped delegation, MCP auth headers, audit trails." />
+  <meta name="author" content="Sunil Prakash" />
+  <meta name="theme-color" content="#fafaf8" />
+  <meta property="og:title" content="AIP + CrewAI: Cryptographic Identity for Your Crew" />
+  <meta property="og:description" content="Add cryptographic identity to CrewAI agents. Scoped delegation, MCP auth headers, audit trails." />
+  <meta property="og:url" content="https://sunilprakash.com/aip/guides/crewai/" />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="https://sunilprakash.com/img/og/default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AIP + CrewAI: Cryptographic Identity for Your Crew" />
+  <meta name="twitter:description" content="Add cryptographic identity to CrewAI agents. Scoped delegation, MCP auth headers, audit trails." />
+  <link rel="canonical" href="https://sunilprakash.com/aip/guides/crewai/" />
+  <link rel="icon" type="image/svg+xml" href="https://sunilprakash.com/img/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="https://sunilprakash.com/img/icon.png" />
+  <link rel="icon" type="image/x-icon" href="https://sunilprakash.com/favicon.ico" />
+  <link rel="apple-touch-icon" href="https://sunilprakash.com/img/apple-touch-icon.png" />
+  <title>AIP + CrewAI Guide -- Sunil Prakash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/aip/css/style.css" />
+  <script>document.documentElement.classList.add("js");</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Add Cryptographic Identity to Your CrewAI Agents",
+    "author": { "@type": "Person", "name": "Sunil Prakash" },
+    "datePublished": "2026-04-07",
+    "description": "Add cryptographic identity to CrewAI agents. Scoped delegation, MCP auth headers, audit trails."
+  }
+  </script>
+  <style>
+    pre {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 24px 0;
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: #f5f5f3;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .install-cmd {
+      background: #1a1a1a;
+      color: #e8e8e8;
+      border: none;
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 14px 20px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .install-cmd code { background: none; color: inherit; padding: 0; }
+    .output-block {
+      background: #1a1a1a;
+      color: #c8c8c8;
+      border: none;
+    }
+    .step-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .step-title h3 {
+      margin: 0;
+      font-size: 19px;
+    }
+    .try-break {
+      background: #fef9f0;
+      border: 1px solid #e8dcc8;
+      border-radius: 6px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .try-break h4 {
+      font-family: var(--mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <nav>
+    <div class="wrap">
+      <a class="nav-brand" href="https://sunilprakash.com/">Sunil Prakash</a>
+      <div class="nav-links">
+        <a href="https://sunilprakash.com/writing/">Writing</a>
+        <a href="https://sunilprakash.com/research/">Research</a>
+        <a href="https://sunilprakash.com/portfolio/">Portfolio</a>
+        <a href="https://sunilprakash.com/speaking/">Speaking</a>
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" class="article">
+    <div class="page-hero">
+      <div class="wrap">
+        <a class="back-link" href="/aip/">&larr; AIP</a>
+        <h1>Add Cryptographic Identity to Your CrewAI Agents</h1>
+        <p class="hero-sub">Wire AIP into an existing CrewAI crew in minutes: each agent gets a signed identity, tool calls carry verifiable auth headers, and delegation between roles is cryptographically enforced.</p>
+      </div>
+    </div>
+
+    <div class="wrap wrap--narrow">
+
+      <p style="font-family: var(--mono); font-size: 13px; color: var(--muted); margin-bottom: 32px;">Prerequisites: Python 3.10+, <code>crewai</code> installed</p>
+
+      <!-- The problem -->
+      <h2 style="font-size: 22px; margin-bottom: 16px;">The problem</h2>
+      <p>Your CrewAI agents call tools anonymously. When the researcher delegates to the writer, no identity verification happens. The tool server has no way to confirm which agent is making the request, let alone whether that agent was authorized to do so. If a tool server is compromised, any agent can impersonate any other. There is no audit trail of who authorized what.</p>
+      <p>AIP gives each agent a self-certifying Ed25519 keypair and an AIP identifier. Every tool call carries a signed token that records the issuing agent, the permitted scope, the budget ceiling, and the delegation depth. The tool server verifies the signature before serving the request. If the token is missing, expired, or out of scope, the request is rejected.</p>
+
+      <!-- Step 1 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">1</span>
+        <h3>Install</h3>
+      </div>
+
+      <p>Install the CrewAI adapter for AIP:</p>
+
+      <div class="install-cmd"><code>pip install aip-agents[crewai]</code></div>
+
+      <p style="font-size: 14px; color: var(--muted);">This pulls in <code>agent-identity-protocol</code> (core SDK) and the CrewAI integration layer. For other frameworks: <code>aip-agents[adk]</code>, <code>aip-agents[langchain]</code>, or <code>aip-agents[all]</code>.</p>
+
+      <!-- Step 2 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">2</span>
+        <h3>Add AIP to your crew</h3>
+      </div>
+
+      <p>Create a plugin, build your crew as normal, then register the plugin. One call wires identity into every agent:</p>
+
+<pre><code>from crewai import Agent, Crew, Task, Process
+from aip_agents import AIPConfig
+from aip_agents.adapters.crewai import AIPCrewPlugin
+
+# Create the plugin
+plugin = AIPCrewPlugin(AIPConfig(app_name="my-research-app"))
+
+# Define agents as you normally would
+researcher = Agent(
+    role="researcher",
+    goal="Find accurate information about AI agent identity protocols",
+    backstory="Expert at web research and source verification",
+    tools=[],
+    allow_delegation=False,
+)
+
+writer = Agent(
+    role="writer",
+    goal="Write clear, concise summaries of research findings",
+    backstory="Technical writer specializing in AI systems",
+    tools=[],
+    allow_delegation=False,
+)
+
+# Build the crew
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[
+        Task(
+            description="Research the current state of agent identity protocols",
+            expected_output="A summary of existing protocols and gaps",
+            agent=researcher,
+        ),
+        Task(
+            description="Write a blog post based on the research",
+            expected_output="A 500-word blog post",
+            agent=writer,
+        ),
+    ],
+    process=Process.sequential,
+)
+
+# Register AIP -- this is the only line you add
+plugin.register(crew)
+
+# Get auth headers for outgoing tool calls
+headers = plugin.get_tool_call_headers("researcher")
+print(headers)
+# {"X-AIP-Token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."}</code></pre>
+
+      <!-- Step 3 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">3</span>
+        <h3>What just happened</h3>
+      </div>
+
+      <p>When you called <code>plugin.register(crew)</code>, AIP walked every agent in the crew and:</p>
+      <ul style="line-height: 1.9;">
+        <li>Generated an Ed25519 keypair for each agent</li>
+        <li>Assigned each agent an AIP identifier (<code>aip:key:ed25519:z6Mkf5...</code>)</li>
+        <li>Issued a signed compact token scoped to that agent's tools</li>
+        <li>Stored the token so <code>get_tool_call_headers()</code> can retrieve it on demand</li>
+      </ul>
+
+      <p>The token flow looks like this:</p>
+
+<pre><code>Agent (researcher)
+  --> AIPCrewPlugin.get_tool_call_headers("researcher")
+      --> returns {"X-AIP-Token": "&lt;signed-jwt&gt;"}
+          --> outgoing request to MCP server
+              --> server verifies signature + scope
+              --> serves request or returns 401</code></pre>
+
+      <p>You can inspect any agent's identity directly:</p>
+
+<pre><code>identity = plugin.identity_manager.get("researcher")
+print(f"AIP ID: {identity.aip_id}")
+# AIP ID: aip:key:ed25519:z6Mkf5rGM...</code></pre>
+
+      <!-- Step 4 -->
+      <div class="step-title" style="margin-top: 48px;">
+        <span class="step-num">4</span>
+        <h3>Multi-agent delegation</h3>
+      </div>
+
+      <p>When the researcher hands off a task to the writer, that handoff can be cryptographically recorded. The delegation token carries a narrowed scope -- the writer can only exercise the permissions explicitly granted, not the researcher's full token:</p>
+
+<pre><code>from crewai import Agent, Crew, Task, Process
+from aip_agents import AIPConfig
+from aip_agents.adapters.crewai import AIPCrewPlugin
+
+plugin = AIPCrewPlugin(AIPConfig(
+    app_name="my-research-app",
+    log_tokens=True,  # prints delegation events to stdout
+))
+
+researcher = Agent(role="researcher", goal="...", backstory="...", tools=[])
+writer = Agent(role="writer", goal="...", backstory="...", tools=[])
+editor = Agent(role="editor", goal="...", backstory="...", tools=[])
+
+crew = Crew(
+    agents=[researcher, writer, editor],
+    tasks=[...],
+    process=Process.sequential,
+)
+plugin.register(crew)
+
+# researcher delegates to writer with attenuated scope
+delegation_token = plugin.create_delegation(
+    parent_role="researcher",
+    child_role="writer",
+    task_description="Write summary based on research findings",
+    scope=["write", "summarize"],  # narrower than researcher's full scope
+)
+
+# writer further delegates to editor with even narrower scope
+plugin.create_delegation(
+    parent_role="writer",
+    child_role="editor",
+    task_description="Proofread the draft",
+    scope=["edit"],
+)
+
+depth = plugin.token_manager.chain_depth(delegation_token)
+print(f"Delegation chain depth: {depth}")
+# Delegation chain depth: 1</code></pre>
+
+      <p>Each delegation step records the parent, the child, and the attenuated scope. The chain depth increments at each hop. You can set <code>max_depth</code> in <code>AIPConfig</code> to enforce a ceiling -- any attempt to delegate beyond that depth is rejected by the token verifier.</p>
+
+      <!-- Try to break it -->
+      <div class="try-break" style="margin-top: 48px;">
+        <h4>Try to break it</h4>
+        <p>Understanding what AIP rejects is as important as what it accepts.</p>
+
+        <p><strong>Tamper with the token:</strong></p>
+<pre><code>from aip_token.compact import CompactToken
+
+token = plugin.get_tool_call_headers("researcher")["X-AIP-Token"]
+tampered = token[:-5] + "XXXXX"
+
+# On the server side:
+# CompactToken.verify(tampered, public_key_bytes) raises:
+#   SignatureError: signature verification failed</code></pre>
+
+        <p><strong>Use a token outside its scope:</strong></p>
+<pre><code># researcher token is scoped to ["search", "fetch"]
+# Trying to call a tool outside that scope:
+#
+# Server checks: "tool:email" not in token.scope
+# Server returns: 401 Unauthorized -- scope mismatch</code></pre>
+
+        <p><strong>Expire a token:</strong></p>
+<pre><code">from aip_agents import AIPConfig
+from aip_agents.adapters.crewai import AIPCrewPlugin
+
+# Issue a token that expired 10 seconds ago
+plugin = AIPCrewPlugin(AIPConfig(
+    app_name="my-research-app",
+    token_ttl_seconds=-10,  # negative TTL = already expired
+))
+plugin.register(crew)
+
+token = plugin.get_tool_call_headers("researcher")["X-AIP-Token"]
+# CompactToken.verify raises: TokenExpiredError</code></pre>
+      </div>
+
+      <!-- Next steps -->
+      <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+        <h3>Next steps</h3>
+        <ul style="line-height: 2;">
+          <li><a href="/aip/guides/adk/">Google ADK integration guide</a> -- identity for hierarchical ADK agent trees</li>
+          <li><a href="/aip/guides/langchain/">LangChain integration guide</a> -- supervisor patterns with multi-agent auth</li>
+          <li><a href="/aip/guides/mcp-proxy/">MCP proxy guide</a> -- enforce AIP at the transport layer</li>
+          <li><a href="https://github.com/sunilp/aip/blob/master/SPEC.md">Full specification</a> -- protocol details for implementers</li>
+          <li><a href="https://arxiv.org/abs/2603.24775">Read the paper</a> -- design rationale, experiments, adversarial evaluation</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>&copy; 2026 Sunil Prakash</p>
+      <div class="footer-links">
+        <a href="https://github.com/sunilp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/sunilprakash" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://scholar.google.com/citations?user=RdrGjZQAAAAJ" target="_blank" rel="noopener">Scholar</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
