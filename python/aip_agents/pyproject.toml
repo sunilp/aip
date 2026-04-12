@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aip-agents"
-version = "0.1.1"
+version = "0.2.0"
 description = "AIP identity and delegation for AI agent frameworks"
 readme = "README.md"
 license = "Apache-2.0"
@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "agent-identity-protocol>=0.1.0",
+    "agent-identity-protocol>=0.2.0",
 ]
 
 [project.optional-dependencies]

@@ -9,3 +9,5 @@ from aip_core.error import (
     DocumentExpired,
     VersionUnsupported,
 )
+
+__version__ = "0.2.0"
