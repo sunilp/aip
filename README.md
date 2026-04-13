@@ -5,13 +5,46 @@
 [![Downloads](https://img.shields.io/pypi/dm/agent-identity-protocol)](https://pypi.org/project/agent-identity-protocol/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Add identity and auth to AI agents in 5 lines of code.**
+**Verifiable identity and scoped delegation for AI agents across MCP and A2A.**
+
+[IETF Internet-Draft](https://datatracker.ietf.org/doc/draft-prakash-aip/) | [arXiv Paper](https://arxiv.org/abs/2603.24775) | [Project Hub](https://sunilprakash.com/aip/) | [Quickstart](https://sunilprakash.com/aip/quickstart/)
 
 ## The problem
 
 MCP has no authentication. A2A has self-declared identities with no attestation. Your agents call tools anonymously, delegate to other agents without verification, and leave no audit trail. When something goes wrong, you have no way to trace who authorized what.
 
-## The fix
+```
+  Agent A            Agent B            MCP Server
+  ───────            ───────            ──────────
+     │                  │                   │
+     │  AIP Token       │                   │
+     │  (signed,        │                   │
+     │   scoped)        │                   │
+     ├─────────────────▶│                   │
+     │                  │  Delegated Token  │
+     │                  │  (narrowed scope, │
+     │                  │   chained sig)    │
+     │                  ├──────────────────▶│
+     │                  │                   │ Verify chain
+     │                  │                   │ Check scope
+     │                  │                   │ Audit trail ✓
+     │                  │       200 OK      │
+     │                  │◀──────────────────┤
+```
+
+## Why not OAuth / UCAN / Macaroons?
+
+| Approach | Limitation for agents |
+|----------|----------------------|
+| **OAuth 2.1** | Client-to-server only. Tokens are opaque to intermediaries, so delegation context is lost in multi-hop chains. Requires centralized auth server per domain. |
+| **UCAN** | DID dependency inherits key management complexity. Nested JWTs create token bloat in deep chains. No policy language beyond capability URIs. |
+| **Macaroons** | Shared-secret verification (HMAC) means the verifier holds the root secret. Single point of compromise. Caveats too simple for complex policies. |
+| **SPIFFE/SPIRE** | Heavy infrastructure (SPIRE server). X.509 rotation complexity. Not designed for ephemeral agent creation. |
+| **IETF AIMS/WIMSE** | AIMS has no token format or delegation semantics. WIMSE is two-party only (no multi-hop A to B to C). |
+
+AIP uses Ed25519 + Biscuit with Datalog policies. Public-key verification (no shared secrets), holder-attenuable scope (each hop can only narrow, never widen), and DNS-based identity (no blockchain). [Full comparison](docs/competitive-analysis.md)
+
+## Get started
 
 ```bash
 pip install aip-agents[crewai]
@@ -62,6 +95,23 @@ headers = plugin.get_auth_headers("researcher")
 - **MCP auth headers** -- signed `X-AIP-Token` headers that any MCP server can verify
 - **Audit trail** -- every token records who authorized what, through which agents, with what scope
 - **Two token modes** -- compact (JWT) for single-hop, chained (Biscuit) for multi-agent delegation
+
+## Performance
+
+Benchmarked on compact and chained token operations (1000 iterations):
+
+| Operation | Python | Rust |
+|-----------|--------|------|
+| Token create (compact) | 0.086 ms | 0.018 ms |
+| Token verify (compact) | 0.189 ms | 0.049 ms |
+| Delegation append (chained) | 0.042 ms | 0.073 ms |
+| Verify 5-hop chain | 0.447 ms | 0.744 ms |
+| Token size (compact) | 356 bytes | 356 bytes |
+| Token growth per hop | +340 bytes | +388 bytes |
+
+End-to-end overhead for a 2-hop delegation: AIP adds ~2.3 ms vs OAuth's ~20 ms (token exchange simulation). 100% rejection rate on unauthorized token operations across 100 attack scenarios. 129 tests passing across both languages.
+
+Full benchmark code in `paper/benchmarks/`.
 
 ## Multi-agent delegation
 
@@ -140,12 +190,13 @@ Rust reference implementation available in `rust/`.
 - [Single-agent MCP](examples/single-agent-mcp/) -- agent authenticates to MCP tool server
 - [Multi-agent delegation](examples/multi-agent-delegation/) -- orchestrator delegates to specialist, calls tool server
 
-## Paper
+## Paper & Standards
 
 > Sunil Prakash. **AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A.** arXiv preprint arXiv:2603.24775, 2026.
 > [https://arxiv.org/abs/2603.24775](https://arxiv.org/abs/2603.24775)
 
-IETF Internet-Draft: [draft-prakash-aip-00](https://datatracker.ietf.org/doc/draft-prakash-aip/)
+- **IETF Internet-Draft:** [draft-prakash-aip-00](https://datatracker.ietf.org/doc/draft-prakash-aip/) (expires 2026-09-28)
+- **NIST:** Under evaluation for the NCCoE agent identity demonstration project
 
 ```bibtex
 @article{prakash2026aip,
