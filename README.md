@@ -177,6 +177,13 @@ PyPI: [agent-identity-protocol](https://pypi.org/project/agent-identity-protocol
 
 Rust reference implementation available in `rust/`.
 
+### Integrations
+
+- **[aip-gateway](https://github.com/sunilp/aip-gateway)** -- drop-in MCP/A2A policy proxy with YAML policy and audit logs
+- **[aip-node](https://github.com/sunilp/aip-node)** -- TypeScript SDK (`@aip-sdk/core`, `@aip-sdk/token`, `@aip-sdk/mcp`, `@aip-sdk/agents`)
+- **[aip-openclaw](https://github.com/sunilp/aip-openclaw)** -- OpenClaw plugin for skill signing and runtime capability enforcement
+- **[aip-claude-code](https://github.com/sunilp/aip-claude-code)** -- Claude Code plugin: signs outgoing MCP tool calls with Ed25519 CompactToken ([npm](https://www.npmjs.com/package/aip-claude-code))
+
 ## Documentation
 
 - **[sunilprakash.com/aip/](https://sunilprakash.com/aip/)** -- project hub with guides and tutorials
