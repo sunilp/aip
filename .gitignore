@@ -12,7 +12,7 @@ dist/
 **/.pytest_cache/
 
 # Paper (local only)
-paper/
+/paper/
 texput.log
 
 submissions/
