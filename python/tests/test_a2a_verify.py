@@ -106,3 +106,50 @@ def test_verify_missing_token_raises_chain_error():
             root_public_key_bytes=kp.public_key_bytes(),
             required_scope="research:read",
         )
+
+
+def test_verify_rejects_attenuated_away_scope():
+    """A scope dropped by a delegation block must not be authorized at the leaf,
+    even if the authority block originally granted it.
+
+    Regression test: a previous text-parsing implementation only checked block 0
+    and would have incorrectly authorized this case.
+    """
+    orchestrator = "aip:web:acme.com/orchestrator"
+    researcher = "aip:web:acme.com/researcher"
+
+    root_kp = KeyPair.generate()
+    auth = ChainedToken.create_authority(
+        issuer=orchestrator,
+        scopes=["research:read", "research:write"],
+        budget_cents=200,
+        max_depth=3,
+        ttl_seconds=3600,
+        keypair=root_kp,
+    )
+    delegated = auth.delegate(
+        delegator=orchestrator,
+        delegate=researcher,
+        scopes=["research:read"],  # research:write is attenuated away
+        budget_cents=100,
+        context="task-1",
+    )
+    body = {"params": {"metadata": {"aip_token": delegated.to_base64()}}}
+
+    # research:read works (granted at every level)
+    result = verify_a2a_task(
+        body,
+        expected_audience=researcher,
+        root_public_key_bytes=root_kp.public_key_bytes(),
+        required_scope="research:read",
+    )
+    assert result.subject == researcher
+
+    # research:write must be rejected — the delegation attenuated it away
+    with pytest.raises(ScopeError):
+        verify_a2a_task(
+            body,
+            expected_audience=researcher,
+            root_public_key_bytes=root_kp.public_key_bytes(),
+            required_scope="research:write",
+        )

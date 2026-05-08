@@ -6,7 +6,7 @@ Spec: spec/aip-bindings-a2a.md §3 (token transport) and §4 (verification flow)
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from aip_a2a.error import AudienceError, ChainError, ExpiryError, ScopeError
 from aip_token.error import TokenError
@@ -45,25 +45,19 @@ def verify_a2a_task(
     """Verify the AIP token carried in an A2A task body. Returns VerifiedIdentity on success.
 
     Implements the 6-step flow from spec §4 (verification side):
-      1. Extract token (from metadata.aip_token)
-      2. Parse + verify signatures of the full chain
-      3. Check final delegation targets `expected_audience`
-      4. Check required scope is authorized
-      5. Map biscuit/token errors to A2A error types
-
-    Args:
-        body: parsed A2A task JSON body.
-        expected_audience: the receiving agent's own AIP id.
-        root_public_key_bytes: the 32-byte ed25519 public key of the chain's root issuer.
-        required_scope: the scope the caller must hold to authorize this task.
+      1. Extract token (from metadata.aip_token).
+      2. Parse + verify signatures of the full chain (ChainedToken.from_base64).
+      3. Check final delegation targets `expected_audience`.
+      4. Check required scope is authorized end-to-end (ChainedToken.authorize).
+      5. Map biscuit/token errors to A2A error types.
 
     Raises:
         ChainError: token missing or chain signatures invalid.
         AudienceError: final delegation does not target expected_audience.
-        ScopeError: required scope not authorized.
+        ScopeError: required scope not authorized at any chain depth.
         ExpiryError: token expired.
     """
-    from aip_token.chained import ChainedToken  # lazy: biscuit_auth is optional dep
+    from aip_token.chained import ChainedToken  # lazy: biscuit-python is optional dep
 
     token_str = extract_token_from_task(body)
     if not token_str:
@@ -77,20 +71,30 @@ def verify_a2a_task(
         raise ChainError(str(exc)) from exc
 
     if token.current_depth() < 1:
-        # An A2A task implies at least one delegation hop (orchestrator -> recipient).
         raise ChainError("expected at least one delegation block in chain")
 
-    # Check audience before scope: an audience mismatch means the token was
-    # not issued to us, so we should reject before doing any scope work.
+    # Audience check before scope: if the token was not issued to us, reject before
+    # doing any policy evaluation. final_delegate() reads the deepest block's
+    # `delegate("X")` fact, which was signed end-to-end by from_base64.
     final_delegate = _final_delegate(token)
     if final_delegate != expected_audience:
         raise AudienceError(
             f"final delegation targets {final_delegate!r}, expected {expected_audience!r}"
         )
 
-    # Verify the required scope is authorized (granted in the authority block).
-    if not _has_scope(token, required_scope):
-        raise ScopeError(required_scope)
+    # Scope check: ChainedToken.authorize() re-verifies the full chain and
+    # evaluates every block's `check if right(...)` rules — this enforces
+    # scope attenuation across delegation hops.
+    try:
+        token.authorize(required_scope, root_public_key_bytes)
+    except TokenError as exc:
+        if exc.code == "aip_token_expired":
+            raise ExpiryError() from exc
+        raise ChainError(str(exc)) from exc
+    except Exception as exc:
+        # biscuit_auth.AuthorizationError or similar — the requested scope is not
+        # authorized at some point in the chain.
+        raise ScopeError(required_scope) from exc
 
     return VerifiedIdentity(
         subject=expected_audience,
@@ -99,36 +103,13 @@ def verify_a2a_task(
     )
 
 
-def _has_scope(token: ChainedToken, scope: str) -> bool:
-    """Check whether the given scope is granted in the authority block.
-
-    The authority block (block 0) contains 'right("scope")' facts for each
-    granted scope. We check directly rather than calling token.authorize()
-    because the authorize() method requires a budget fact in the authorizer
-    context that is not available at verify time.
-    """
-    biscuit = getattr(token, "_biscuit", None)
-    if biscuit is None:
-        return False
-    authority_src = biscuit.block_source(0) or ""
-    target = f'right("{scope}")'
-    for line in authority_src.split("\n"):
-        if line.strip().rstrip(";") == target:
-            return True
-    return False
-
-
 def _final_delegate(token: ChainedToken) -> str:
     """Extract the final delegation target from a chained token.
 
-    Best-effort: prefer a structured accessor if ChainedToken exposes one;
-    otherwise parse the last delegation block's source directly.
+    The biscuit chain's signatures are verified by from_base64 before we get here,
+    so reading block source for the `delegate("X")` fact is safe — any tampering
+    would have caused from_base64 to raise.
     """
-    if hasattr(token, "final_delegate"):
-        return token.final_delegate()  # type: ignore[no-any-return]
-
-    # Fallback: parse the last block's source text for the delegate("...") fact.
-    # Block 0 is the authority block; delegation blocks start at index 1.
     biscuit = getattr(token, "_biscuit", None)
     if biscuit is None:
         raise ChainError("cannot determine final delegate from token")

@@ -130,3 +130,47 @@ def test_authorize_rejects_unauthorized():
     )
     with pytest.raises(Exception):
         token.authorize("tool:email", root_kp.public_key_bytes())
+
+
+def test_authorize_delegated_token():
+    """A delegated token should authorize a scope it was given."""
+    root_kp = KeyPair.generate()
+    auth = ChainedToken.create_authority(
+        issuer="aip:web:example.com/orch",
+        scopes=["tool:search", "tool:email"],
+        budget_cents=200,
+        max_depth=3,
+        ttl_seconds=3600,
+        keypair=root_kp,
+    )
+    delegated = auth.delegate(
+        delegator="aip:web:example.com/orch",
+        delegate="aip:web:example.com/worker",
+        scopes=["tool:search"],
+        budget_cents=100,  # presence of budget triggers `check if budget($b), $b <= 100`
+        context="task-1",
+    )
+    # Should NOT raise — `tool:search` is authorized in the chain.
+    delegated.authorize("tool:search", root_kp.public_key_bytes())
+
+
+def test_authorize_delegated_token_rejects_unauthorized_scope():
+    """A delegated token must reject a scope that was attenuated away."""
+    root_kp = KeyPair.generate()
+    auth = ChainedToken.create_authority(
+        issuer="aip:web:example.com/orch",
+        scopes=["tool:search", "tool:email"],
+        budget_cents=200,
+        max_depth=3,
+        ttl_seconds=3600,
+        keypair=root_kp,
+    )
+    delegated = auth.delegate(
+        delegator="aip:web:example.com/orch",
+        delegate="aip:web:example.com/worker",
+        scopes=["tool:search"],  # email attenuated away
+        budget_cents=100,
+        context="task-1",
+    )
+    with pytest.raises(Exception):
+        delegated.authorize("tool:email", root_kp.public_key_bytes())

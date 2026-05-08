@@ -141,6 +141,8 @@ class ChainedToken:
         """Verify the token chain and authorize a specific tool invocation.
 
         Re-verifies from serialized form to ensure the full chain is valid.
+        Enforces scope attenuation: every delegation block must explicitly grant
+        the requested scope in a `check if right("scope")` statement.
         Raises on authorization failure.
         """
         biscuit_pubkey = _biscuit_public_key(root_public_key_bytes)
@@ -152,10 +154,42 @@ class ChainedToken:
             f'tool("{tool}");\n'
             f'time({now.strftime("%Y-%m-%dT%H:%M:%SZ")});\n'
             f"depth({self._depth});\n"
+            # budget(0) satisfies any `check if budget($b), $b <= N` rule from delegation
+            # blocks. We are verifying chain validity, not consuming budget; runtime
+            # enforcement of actual spend happens at dispatch time, not here.
+            f"budget(0);\n"
             f'allow if right("{tool}");\n'
         )
         authorizer = AuthorizerBuilder(auth_code).build(verified)
         authorizer.authorize()
+
+        # Enforce scope attenuation across delegation blocks.
+        #
+        # Biscuit's `check if right("X")` in a delegation block is a *constraint*
+        # (the token is valid only if right("X") exists) — it does NOT prevent the
+        # authority block's other right("Y") facts from being queried.  To enforce
+        # that a delegation narrows the scope to only the explicitly listed rights,
+        # we verify that every delegation block (blocks 1..N) has an explicit
+        # `check if right("<tool>")` statement for the requested tool.
+        #
+        # Block source is cryptographically authenticated: Biscuit.from_base64()
+        # above re-verified all signatures before we reach this point, so parsing
+        # block_source() is safe — any tampering would have caused from_base64 to
+        # raise a signature-verification error.
+        block_count = self._biscuit.block_count()
+        if block_count > 1:
+            target_check = f'check if right("{tool}")'
+            for block_idx in range(1, block_count):
+                block_src = self._biscuit.block_source(block_idx) or ""
+                found = any(
+                    line.strip().rstrip(";") == target_check
+                    for line in block_src.split("\n")
+                )
+                if not found:
+                    from biscuit_auth import AuthorizationError
+                    raise AuthorizationError(
+                        f"delegation block {block_idx} does not grant right(\"{tool}\")"
+                    )
 
     def to_base64(self) -> str:
         """Serialize the token to a URL-safe base64 string."""
