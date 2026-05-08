@@ -1,0 +1,58 @@
+/* Spec page layout — sticky TOC + scrollable content. */
+.spec-header { padding: 32px 48px 16px; border-bottom: 1px solid var(--border); }
+.spec-header h1 { font-family: var(--serif); margin: 0 0 8px; }
+.spec-links { color: var(--ink-muted); font-size: 14px; margin: 0; }
+.spec-links a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); }
+
+.spec-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 48px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+.spec-toc {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 24px 0;
+}
+.spec-toc ul { list-style: none; padding: 0; margin: 0; }
+.spec-toc li { padding: 2px 0; }
+.spec-toc a { color: var(--ink-muted); text-decoration: none; }
+.spec-toc a:hover { color: var(--ink); }
+.spec-toc .toc-h1 { font-weight: 600; margin-top: 12px; color: var(--ink); }
+.spec-toc .toc-h1 a { color: var(--ink); }
+.spec-toc .toc-h2 { padding-left: 12px; }
+.spec-toc .toc-h3 { padding-left: 24px; font-size: 12.5px; }
+
+.spec-content { padding: 24px 0 96px; max-width: 760px; }
+.spec-content section { margin-bottom: 64px; }
+.spec-content h2 { font-family: var(--serif); font-size: 28px; margin: 32px 0 16px; }
+.spec-content h3 { font-family: var(--serif); font-size: 22px; margin: 28px 0 12px; }
+.spec-content h4 { font-size: 17px; font-weight: 600; margin: 24px 0 10px; }
+.spec-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.spec-content th, .spec-content td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+.spec-content th { background: #f5f5f3; }
+
+.rfc2119 {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.82em;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 880px) {
+  .spec-layout { grid-template-columns: 1fr; padding: 0 24px; }
+  .spec-toc { position: static; max-height: none; }
+}
