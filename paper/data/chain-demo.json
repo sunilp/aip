@@ -1,0 +1,39 @@
+{
+  "blocks": [
+    {
+      "depth": 0,
+      "type": "authority",
+      "issuer": "aip:web:acme.com/orchestrator",
+      "delegate": null,
+      "scopes": ["read", "write", "delete"],
+      "budget_cents": 500,
+      "max_depth": 3,
+      "ttl_seconds": 3600,
+      "context": null,
+      "signature": "Ed25519:gN3pK...",
+      "expires": "2026-05-08T15:00:00Z"
+    },
+    {
+      "depth": 1,
+      "type": "delegation",
+      "issuer": "aip:web:acme.com/orchestrator",
+      "delegate": "aip:web:acme.com/researcher",
+      "scopes": ["read", "write"],
+      "budget_cents": 200,
+      "context": "research-task-2026-05-08",
+      "signature": "Ed25519:7zQfM...",
+      "expires": "2026-05-08T15:00:00Z"
+    },
+    {
+      "depth": 2,
+      "type": "delegation",
+      "issuer": "aip:web:acme.com/researcher",
+      "delegate": "aip:web:acme.com/writer",
+      "scopes": ["read"],
+      "budget_cents": 50,
+      "context": "draft-summary",
+      "signature": "Ed25519:k2Lw9...",
+      "expires": "2026-05-08T15:00:00Z"
+    }
+  ]
+}
