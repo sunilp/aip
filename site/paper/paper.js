@@ -78,3 +78,32 @@ async function renderChain() {
 }
 
 document.addEventListener("DOMContentLoaded", renderChain);
+
+async function renderAttacks() {
+  const root = document.getElementById("attack-simulator");
+  if (!root) return;
+  const data = await loadJSON("/aip/paper/data/attacks.json");
+  data.scenarios.forEach((s) => {
+    const card = document.createElement("div");
+    card.className = "attack-card";
+    card.innerHTML = `
+      <h3>${s.title}</h3>
+      <p class="attack-desc">${s.description}</p>
+      <p><strong>Modification:</strong> ${s.chain_change}</p>
+      <button data-id="${s.id}">Try attack</button>
+      <div class="attack-result" hidden></div>
+    `;
+    card.querySelector("button").addEventListener("click", () => {
+      const result = card.querySelector(".attack-result");
+      result.innerHTML = `
+        <strong>Rejected at Step ${s.verification_step}: ${s.verification_substep}</strong>
+        <p>Error code: <code>${s.error_code}</code></p>
+        <p>${s.explanation}</p>
+      `;
+      result.hidden = false;
+    });
+    root.appendChild(card);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", renderAttacks);
