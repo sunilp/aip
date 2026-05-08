@@ -1,0 +1,9 @@
+{
+  "name": "Writer",
+  "description": "Drafts summaries and reports from research input.",
+  "skills": ["writing"],
+  "aip_identity": {
+    "id": "aip:web:example.local/writer",
+    "document_url": "https://example.local/.well-known/aip/agents/writer.json"
+  }
+}

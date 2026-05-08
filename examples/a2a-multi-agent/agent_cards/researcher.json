@@ -1,0 +1,9 @@
+{
+  "name": "Researcher",
+  "description": "Performs web research on a topic.",
+  "skills": ["research"],
+  "aip_identity": {
+    "id": "aip:web:example.local/researcher",
+    "document_url": "https://example.local/.well-known/aip/agents/researcher.json"
+  }
+}

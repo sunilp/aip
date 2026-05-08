@@ -36,3 +36,6 @@ docs/superpowers/
 
 # Claude
 .claude/
+
+# Example keys (never commit private material)
+examples/a2a-multi-agent/keys/

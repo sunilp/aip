@@ -1,0 +1,9 @@
+{
+  "name": "Orchestrator",
+  "description": "Coordinates research and writing tasks across specialist agents.",
+  "skills": ["task-coordination"],
+  "aip_identity": {
+    "id": "aip:web:example.local/orchestrator",
+    "document_url": "https://example.local/.well-known/aip/agents/orchestrator.json"
+  }
+}
