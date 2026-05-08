@@ -20,6 +20,9 @@ submissions/
 # Planning (local only)
 planning/
 
+# Superpowers artifacts (local only — never commit)
+docs/superpowers/
+
 # Archives
 *.tar.gz
 
