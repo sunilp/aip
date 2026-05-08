@@ -163,6 +163,8 @@ def build_page() -> str:
             cls = f"toc-h{level}"
             toc_entries.append(f'<li class="{cls}"><a href="#{anchor}">{text}</a></li>')
 
+    toc_html = "\n".join(toc_entries)
+    body_html = "\n".join(sections_html)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -183,10 +185,10 @@ def build_page() -> str:
 </header>
 <div class="spec-layout">
 <aside class="spec-toc"><nav><ul>
-{"\n".join(toc_entries)}
+{toc_html}
 </ul></nav></aside>
 <main class="spec-content">
-{"\n".join(sections_html)}
+{body_html}
 </main>
 </div>
 </body>
