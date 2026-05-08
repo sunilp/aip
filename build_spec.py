@@ -20,7 +20,7 @@ DOC_ORDER = [
     "aip-bindings-http",
 ]
 
-PAGE_TITLE = "AIP Specification v0.2.0"
+PAGE_TITLE = "AIP Specification v0.2.0"  # bump manually on each release
 ARXIV_URL = "https://arxiv.org/abs/2603.24775"
 IETF_URL = "https://datatracker.ietf.org/doc/draft-prakash-aip/"
 
@@ -45,10 +45,6 @@ def md_to_html(md: str, file_id: str) -> tuple[str, list[tuple[int, str, str]]]:
     headings: list[tuple[int, str, str]] = []
     in_code = False
     in_table = False
-
-    def emit_para_open():
-        if out and out[-1] != "<p>":
-            out.append("<p>")
 
     for raw in lines:
         if raw.startswith("```"):
@@ -144,9 +140,14 @@ def render_inline(text: str) -> str:
     text = re.sub(r"(?<![*])\*([^*]+)\*(?![*])", r"<em>\1</em>", text)
     # [link](url)
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)
-    # RFC 2119 keywords as callouts.
-    for kw in ("MUST NOT", "MUST", "SHOULD NOT", "SHOULD", "REQUIRED", "RECOMMENDED", "MAY", "OPTIONAL"):
-        text = re.sub(rf"\b{kw}\b", f'<span class="rfc2119">{kw}</span>', text)
+    # RFC 2119 keywords as callouts — single pass so two-word forms (MUST NOT,
+    # SHOULD NOT) are captured before the one-word forms (MUST, SHOULD), preventing
+    # nested-span corruption on a second regex pass.
+    text = re.sub(
+        r"\b(MUST NOT|SHOULD NOT|MUST|SHOULD|REQUIRED|RECOMMENDED|MAY|OPTIONAL)\b",
+        r'<span class="rfc2119">\1</span>',
+        text,
+    )
     return text
 
 
@@ -182,10 +183,10 @@ def build_page() -> str:
 </header>
 <div class="spec-layout">
 <aside class="spec-toc"><nav><ul>
-{chr(10).join(toc_entries)}
+{"\n".join(toc_entries)}
 </ul></nav></aside>
 <main class="spec-content">
-{chr(10).join(sections_html)}
+{"\n".join(sections_html)}
 </main>
 </div>
 </body>
