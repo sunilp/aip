@@ -36,3 +36,45 @@ function showFlowDetail(step) {
 document.addEventListener("DOMContentLoaded", () => {
   renderFlow();
 });
+
+async function loadJSON(url) {
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function renderChain() {
+  const root = document.getElementById("chain-viewer");
+  if (!root) return;
+  const data = await loadJSON("/aip/paper/data/chain-demo.json");
+  data.blocks.forEach((block) => {
+    const wrap = document.createElement("details");
+    wrap.className = "chain-block";
+    wrap.addEventListener("toggle", () => wrap.classList.toggle("expanded", wrap.open));
+
+    const scopes = block.scopes.join(", ");
+    const summary = document.createElement("summary");
+    summary.innerHTML = `
+      <span>Block ${block.depth} — ${block.type}</span>
+      <span>${block.delegate ?? block.issuer}</span>
+      <span class="scope-badge">scope: [${scopes}]</span>
+    `;
+    wrap.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "chain-block-body";
+    body.innerHTML = `<dl>
+      <dt>Issuer</dt><dd>${block.issuer}</dd>
+      ${block.delegate ? `<dt>Delegate</dt><dd>${block.delegate}</dd>` : ""}
+      <dt>Scopes</dt><dd>[${scopes}]</dd>
+      <dt>Budget</dt><dd>${block.budget_cents !== null ? `$${(block.budget_cents/100).toFixed(2)}` : "n/a"}</dd>
+      ${block.max_depth !== undefined ? `<dt>Max depth</dt><dd>${block.max_depth}</dd>` : ""}
+      ${block.context ? `<dt>Context</dt><dd>${block.context}</dd>` : ""}
+      <dt>Expires</dt><dd>${block.expires}</dd>
+      <dt>Signature</dt><dd>${block.signature}</dd>
+    </dl>`;
+    wrap.appendChild(body);
+    root.appendChild(wrap);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", renderChain);
