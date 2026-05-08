@@ -11,6 +11,7 @@ from aip_a2a.error import (
     a2a_error_response,
 )
 from aip_a2a.verify import VerifiedIdentity, extract_token_from_task, verify_a2a_task
+from aip_a2a.delegate import append_delegation_block
 
 __version__ = "0.3.0"
 
@@ -28,4 +29,5 @@ __all__ = [
     "VerifiedIdentity",
     "extract_token_from_task",
     "verify_a2a_task",
+    "append_delegation_block",
 ]
