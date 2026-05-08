@@ -1,0 +1,79 @@
+.paper-header { padding: 48px 48px 16px; max-width: 880px; margin: 0 auto; }
+.paper-header h1 { font-family: var(--serif); font-size: 32px; margin: 0 0 8px; }
+.paper-meta { color: var(--ink-muted); font-size: 14px; }
+.paper-meta a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); }
+
+.paper-main { max-width: 880px; margin: 0 auto; padding: 0 48px 96px; }
+
+.paper-abstract { margin: 32px 0; padding: 16px 24px; border-left: 3px solid var(--border); background: #fafaf8; }
+.paper-abstract summary { cursor: pointer; }
+.paper-abstract summary h2 { display: inline; font-size: 18px; margin: 0; }
+.paper-abstract p { font-size: 15px; line-height: 1.7; }
+
+.module { margin: 64px 0; padding-top: 32px; border-top: 1px solid var(--border); }
+.module h2 { font-family: var(--serif); font-size: 24px; margin: 0 0 8px; }
+
+/* Module 1 — flow diagram. */
+#flow-diagram { display: flex; flex-direction: column; gap: 8px; margin: 24px 0; }
+.flow-step {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px; border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; transition: background 0.1s;
+}
+.flow-step:hover { background: #f5f5f3; }
+.flow-step.active { background: #fef3c7; border-color: #d97706; }
+.flow-step .step-num { font-family: var(--mono); font-size: 12px; color: var(--ink-muted); width: 32px; }
+.flow-step .step-title { font-weight: 500; }
+.flow-detail {
+  margin-top: 16px; padding: 24px; background: #fafaf8;
+  border-left: 3px solid #d97706; font-size: 14px; line-height: 1.7;
+}
+
+/* Module 2 — chain viewer. */
+#chain-viewer { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+.chain-block {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 16px 20px; background: #fff;
+}
+.chain-block.expanded { background: #fafaf8; }
+.chain-block summary {
+  cursor: pointer; display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 13px;
+}
+.chain-block .scope-badge {
+  margin-left: auto; padding: 2px 10px;
+  font-size: 11px; font-family: var(--mono);
+  background: #dbeafe; color: #1e40af; border-radius: 3px;
+}
+.chain-block-body { margin-top: 16px; font-size: 13.5px; }
+.chain-block-body dl { display: grid; grid-template-columns: 140px 1fr; gap: 6px 16px; margin: 0; }
+.chain-block-body dt { color: var(--ink-muted); font-weight: 500; }
+.chain-block-body dd { margin: 0; font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+
+/* Module 3 — attack simulator. */
+#attack-simulator { display: flex; flex-direction: column; gap: 16px; margin: 24px 0; }
+.attack-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 20px 24px; background: #fff;
+}
+.attack-card h3 { margin: 0 0 6px; font-size: 17px; }
+.attack-card .attack-desc { color: var(--ink-muted); font-size: 14px; margin: 0 0 16px; }
+.attack-card button {
+  font-family: var(--mono); font-size: 13px;
+  padding: 6px 14px; border: 1px solid var(--border);
+  background: #fff; border-radius: 4px; cursor: pointer;
+}
+.attack-card button:hover { background: #f5f5f3; }
+.attack-result {
+  margin-top: 16px; padding: 16px;
+  background: #fee2e2; border-left: 3px solid #dc2626;
+  font-size: 13.5px; line-height: 1.7;
+}
+.attack-result code { background: rgba(0,0,0,0.05); padding: 1px 6px; border-radius: 3px; }
+
+.paper-footer { margin-top: 96px; padding: 32px 48px; border-top: 1px solid var(--border); color: var(--ink-muted); font-size: 13px; }
+.paper-footer code { font-size: 12px; word-break: break-all; }
+
+@media (max-width: 880px) {
+  .paper-header, .paper-main { padding-left: 24px; padding-right: 24px; }
+}

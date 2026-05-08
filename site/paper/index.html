@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AIP -- Interactive Protocol Page</title>
+<link rel="stylesheet" href="/aip/css/style.css"/>
+<link rel="stylesheet" href="/aip/paper/paper.css"/>
+<meta name="description" content="Interactive walkthrough of the Agent Identity Protocol: 6-step verification flow, token chain viewer, attack simulator."/>
+</head>
+<body>
+<header class="paper-header">
+<h1>AIP: Verifiable, Delegable Identity for AI Agents</h1>
+<p class="paper-meta">
+<a href="https://arxiv.org/abs/2603.24775">arXiv:2603.24775</a> ·
+<a href="https://datatracker.ietf.org/doc/draft-prakash-aip/">IETF draft-prakash-aip-00</a> ·
+<a href="https://arxiv.org/pdf/2603.24775.pdf">Read full PDF</a>
+</p>
+</header>
+
+<main class="paper-main">
+<details class="paper-abstract" open>
+<summary><h2>Abstract</h2></summary>
+<p>The Agent Identity Protocol (AIP) defines verifiable cryptographic identity, scoped delegation, and provenance for AI agents communicating over MCP and A2A. AIP introduces Invocation-Bound Capability Tokens (IBCTs) that fuse identity, authorization, and provenance in a single token chain. Two token modes — compact (JWT+EdDSA, single-hop) and chained (Biscuit+Datalog, multi-hop) — give agents fine-grained delegation with attenuating scope, depth limits, and per-token budget ceilings. This page walks through the protocol interactively: the 6-step verification flow, a sample token chain, and three classes of attacks AIP rejects.</p>
+</details>
+
+<section id="flow" class="module">
+<h2>Module 1 — 6-Step Verification Flow</h2>
+<p>Click any step in the diagram to expand its details.</p>
+<div id="flow-diagram"></div>
+<div id="flow-detail" class="flow-detail" hidden></div>
+</section>
+
+<section id="chain" class="module">
+<h2>Module 2 — Token Chain Viewer</h2>
+<p>A 3-block chained token. Each block is expandable. Watch how scope attenuates as the chain grows.</p>
+<div id="chain-viewer"></div>
+</section>
+
+<section id="attacks" class="module">
+<h2>Module 3 — Attack Simulator</h2>
+<p>Three classes of attack against AIP. Pick one and watch the verifier reject it.</p>
+<div id="attack-simulator"></div>
+</section>
+
+<footer class="paper-footer">
+<p>Related work: <a href="/research/ldp/">LDP — Linked Decision Provenance</a> · <a href="/research/dci/">DCI — Decision Chain Inference</a></p>
+<p>Cite: <code>@misc{prakash2026aip, author = {Prakash, Sunil}, title = {AIP: Agent Identity Protocol}, year = {2026}, eprint = {2603.24775}, archivePrefix = {arXiv}}</code></p>
+</footer>
+</main>
+
+<script src="/aip/paper/paper.js"></script>
+</body>
+</html>

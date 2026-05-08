@@ -1,0 +1,34 @@
+{
+  "scenarios": [
+    {
+      "id": "scope-widening",
+      "title": "Scope widening",
+      "description": "Child block tries to grant a capability the parent does not have.",
+      "chain_change": "Block 2 adds 'delete' to scopes — parent only has ['read', 'write'].",
+      "verification_step": 5,
+      "verification_substep": "Scope attenuation",
+      "error_code": "aip_scope_widening",
+      "explanation": "Each delegation block's scopes MUST be a subset of its parent's scopes. AIP rejects on parse, before any work happens."
+    },
+    {
+      "id": "replay-after-expiry",
+      "title": "Replay after expiry",
+      "description": "An old token reused after its expiry timestamp.",
+      "chain_change": "All blocks have expires=2026-05-08T15:00:00Z; the verifier's clock is 2026-05-08T16:00:00Z.",
+      "verification_step": 5,
+      "verification_substep": "Expiry",
+      "error_code": "aip_token_expired",
+      "explanation": "The verifier checks every block in the chain against current time. Even one expired block rejects the whole token."
+    },
+    {
+      "id": "depth-bypass",
+      "title": "Depth bypass",
+      "description": "Chain length exceeds the max_depth set in the root block.",
+      "chain_change": "Authority block sets max_depth=3, but the chain contains 4 delegation blocks.",
+      "verification_step": 5,
+      "verification_substep": "Delegation depth",
+      "error_code": "aip_depth_exceeded",
+      "explanation": "max_depth is fixed at the authority block. No descendant can extend it. AIP rejects depth-bypass attempts even if every signature is valid."
+    }
+  ]
+}
