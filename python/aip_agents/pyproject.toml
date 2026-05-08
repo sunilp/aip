@@ -42,7 +42,11 @@ Documentation = "https://github.com/sunilp/aip#aip-agents"
 Repository = "https://github.com/sunilp/aip"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["__init__.py", "core", "adapters", "py.typed", "README.md"]
+bypass-selection = true
 
-[tool.hatch.build.targets.wheel.sources]
-"" = "aip_agents"
+[tool.hatch.build.targets.wheel.force-include]
+"__init__.py" = "aip_agents/__init__.py"
+"py.typed" = "aip_agents/py.typed"
+"README.md" = "aip_agents/README.md"
+"core" = "aip_agents/core"
+"adapters" = "aip_agents/adapters"
