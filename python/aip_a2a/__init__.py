@@ -10,6 +10,7 @@ from aip_a2a.error import (
     ScopeError,
     a2a_error_response,
 )
+from aip_a2a.verify import VerifiedIdentity, extract_token_from_task, verify_a2a_task
 
 __version__ = "0.3.0"
 
@@ -24,4 +25,7 @@ __all__ = [
     "ExpiryError",
     "ScopeError",
     "a2a_error_response",
+    "VerifiedIdentity",
+    "extract_token_from_task",
+    "verify_a2a_task",
 ]
