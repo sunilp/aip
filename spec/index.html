@@ -1,0 +1,1633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AIP Specification v0.2.0 -- AIP</title>
+<link rel="stylesheet" href="/aip/css/style.css"/>
+<link rel="stylesheet" href="/aip/css/spec.css"/>
+</head>
+<body>
+<header class="spec-header">
+<h1>AIP Specification v0.2.0</h1>
+<p class="spec-links">
+  <a href="https://arxiv.org/abs/2603.24775">arXiv:2603.24775</a> ·
+  <a href="https://datatracker.ietf.org/doc/draft-prakash-aip/">IETF draft-prakash-aip-00</a> ·
+  <a href="https://github.com/sunilp/aip">GitHub</a>
+</p>
+</header>
+<div class="spec-layout">
+<aside class="spec-toc"><nav><ul>
+<li class="toc-h1"><a href="#aip-core">aip-core</a></li>
+<li class="toc-h2"><a href="#aip-core-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-core-identifier-format">2. Identifier Format</a></li>
+<li class="toc-h3"><a href="#aip-core-abnf-grammar">2.1 ABNF Grammar</a></li>
+<li class="toc-h3"><a href="#aip-core-dns-based-identifiers-aipweb">2.2 DNS-Based Identifiers (`aip:web:`)</a></li>
+<li class="toc-h3"><a href="#aip-core-self-certifying-identifiers-aipkey">2.3 Self-Certifying Identifiers (`aip:key:`)</a></li>
+<li class="toc-h2"><a href="#aip-core-identity-document">3. Identity Document</a></li>
+<li class="toc-h3"><a href="#aip-core-json-schema">3.1 JSON Schema</a></li>
+<li class="toc-h3"><a href="#aip-core-field-definitions">3.2 Field Definitions</a></li>
+<li class="toc-h3"><a href="#aip-core-self-certifying-identity-documents">3.3 Self-Certifying Identity Documents</a></li>
+<li class="toc-h2"><a href="#aip-core-self-signature-mechanism">4. Self-Signature Mechanism</a></li>
+<li class="toc-h3"><a href="#aip-core-canonicalization">4.1 Canonicalization</a></li>
+<li class="toc-h3"><a href="#aip-core-signing-process">4.2 Signing Process</a></li>
+<li class="toc-h3"><a href="#aip-core-verification-process">4.3 Verification Process</a></li>
+<li class="toc-h3"><a href="#aip-core-security-properties">4.4 Security Properties</a></li>
+<li class="toc-h2"><a href="#aip-core-resolution-algorithm">5. Resolution Algorithm</a></li>
+<li class="toc-h3"><a href="#aip-core-aipweb-resolution">5.1 `aip:web:` Resolution</a></li>
+<li class="toc-h3"><a href="#aip-core-aipkey-resolution">5.2 `aip:key:` Resolution</a></li>
+<li class="toc-h2"><a href="#aip-core-version-compatibility">6. Version Compatibility</a></li>
+<li class="toc-h3"><a href="#aip-core-version-field">6.1 Version Field</a></li>
+<li class="toc-h3"><a href="#aip-core-rules">6.2 Rules</a></li>
+<li class="toc-h2"><a href="#aip-core-design-decisions">7. Design Decisions</a></li>
+<li class="toc-h1"><a href="#aip-tokens">aip-tokens</a></li>
+<li class="toc-h2"><a href="#aip-tokens-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-tokens-token-modes-overview">2. Token Modes Overview</a></li>
+<li class="toc-h2"><a href="#aip-tokens-compact-mode-jwt-wire-format">3. Compact Mode (JWT Wire Format)</a></li>
+<li class="toc-h3"><a href="#aip-tokens-jwt-header">3.1 JWT Header</a></li>
+<li class="toc-h3"><a href="#aip-tokens-jwt-claims">3.2 JWT Claims</a></li>
+<li class="toc-h3"><a href="#aip-tokens-claim-definitions">3.3 Claim Definitions</a></li>
+<li class="toc-h2"><a href="#aip-tokens-chained-mode-biscuit-wire-format">4. Chained Mode (Biscuit Wire Format)</a></li>
+<li class="toc-h3"><a href="#aip-tokens-overview">4.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-tokens-block-structure">4.2 Block Structure</a></li>
+<li class="toc-h3"><a href="#aip-tokens-block-0-authority-facts">4.3 Block 0 (Authority) Facts</a></li>
+<li class="toc-h3"><a href="#aip-tokens-delegation-block-facts">4.4 Delegation Block Facts</a></li>
+<li class="toc-h2"><a href="#aip-tokens-mode-detection-and-upgrade">5. Mode Detection and Upgrade</a></li>
+<li class="toc-h3"><a href="#aip-tokens-mode-detection">5.1 Mode Detection</a></li>
+<li class="toc-h3"><a href="#aip-tokens-compact-to-chained-mapping">5.2 Compact-to-Chained Mapping</a></li>
+<li class="toc-h2"><a href="#aip-tokens-budget-semantics">6. Budget Semantics</a></li>
+<li class="toc-h3"><a href="#aip-tokens-enforcement-model">6.1 Enforcement Model</a></li>
+<li class="toc-h3"><a href="#aip-tokens-analogy">6.2 Analogy</a></li>
+<li class="toc-h3"><a href="#aip-tokens-requirements">6.3 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-tokens-policy-profiles-chained-mode">7. Policy Profiles (Chained Mode)</a></li>
+<li class="toc-h3"><a href="#aip-tokens-simple-profile">7.1 Simple Profile</a></li>
+<li class="toc-h3"><a href="#aip-tokens-standard-profile">7.2 Standard Profile</a></li>
+<li class="toc-h3"><a href="#aip-tokens-advanced-profile">7.3 Advanced Profile</a></li>
+<li class="toc-h2"><a href="#aip-tokens-token-size-considerations">8. Token Size Considerations</a></li>
+<li class="toc-h3"><a href="#aip-tokens-size-guidance">8.1 Size Guidance</a></li>
+<li class="toc-h3"><a href="#aip-tokens-token-by-reference">8.2 Token-by-Reference</a></li>
+<li class="toc-h3"><a href="#aip-tokens-recommended-chain-depth">8.3 Recommended Chain Depth</a></li>
+<li class="toc-h1"><a href="#aip-delegation">aip-delegation</a></li>
+<li class="toc-h2"><a href="#aip-delegation-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-delegation-scope-attenuation-rules">2. Scope Attenuation Rules</a></li>
+<li class="toc-h3"><a href="#aip-delegation-fundamental-rule">2.1 Fundamental Rule</a></li>
+<li class="toc-h3"><a href="#aip-delegation-attenuation-dimensions">2.2 Attenuation Dimensions</a></li>
+<li class="toc-h3"><a href="#aip-delegation-example">2.3 Example</a></li>
+<li class="toc-h3"><a href="#aip-delegation-requirements">2.4 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-delegation-bounded-depth">3. Bounded Depth</a></li>
+<li class="toc-h3"><a href="#aip-delegation-depth-limit">3.1 Depth Limit</a></li>
+<li class="toc-h3"><a href="#aip-delegation-default-depth">3.2 Default Depth</a></li>
+<li class="toc-h3"><a href="#aip-delegation-compact-mode-depth">3.3 Compact Mode Depth</a></li>
+<li class="toc-h3"><a href="#aip-delegation-requirements">3.4 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-delegation-delegation-context">4. Delegation Context</a></li>
+<li class="toc-h3"><a href="#aip-delegation-context-requirement">4.1 Context Requirement</a></li>
+<li class="toc-h3"><a href="#aip-delegation-requirements">4.2 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-delegation-ephemeral-agent-grants">5. Ephemeral Agent Grants</a></li>
+<li class="toc-h3"><a href="#aip-delegation-overview">5.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-delegation-grant-flow">5.2 Grant Flow</a></li>
+<li class="toc-h3"><a href="#aip-delegation-ephemeral-grant-block">5.3 Ephemeral Grant Block</a></li>
+<li class="toc-h3"><a href="#aip-delegation-requirements">5.4 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-delegation-key-rotation">6. Key Rotation</a></li>
+<li class="toc-h3"><a href="#aip-delegation-dns-based-identities-aipweb">6.1 DNS-Based Identities (`aip:web:`)</a></li>
+<li class="toc-h3"><a href="#aip-delegation-self-certifying-identities-aipkey">6.2 Self-Certifying Identities (`aip:key:`)</a></li>
+<li class="toc-h2"><a href="#aip-delegation-revocation">7. Revocation</a></li>
+<li class="toc-h3"><a href="#aip-delegation-general-stance">7.1 General Stance</a></li>
+<li class="toc-h3"><a href="#aip-delegation-compact-mode">7.2 Compact Mode</a></li>
+<li class="toc-h3"><a href="#aip-delegation-chained-mode">7.3 Chained Mode</a></li>
+<li class="toc-h3"><a href="#aip-delegation-requirements">7.4 Requirements</a></li>
+<li class="toc-h1"><a href="#aip-provenance">aip-provenance</a></li>
+<li class="toc-h2"><a href="#aip-provenance-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-provenance-completion-blocks">2. Completion Blocks</a></li>
+<li class="toc-h3"><a href="#aip-provenance-overview">2.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-provenance-completion-block-structure">2.2 Completion Block Structure</a></li>
+<li class="toc-h3"><a href="#aip-provenance-field-definitions">2.3 Field Definitions</a></li>
+<li class="toc-h3"><a href="#aip-provenance-when-completion-blocks-are-required">2.4 When Completion Blocks Are Required</a></li>
+<li class="toc-h3"><a href="#aip-provenance-requirements">2.5 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-provenance-trust-model">3. Trust Model</a></li>
+<li class="toc-h3"><a href="#aip-provenance-overview">3.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-provenance-trust-levels">3.2 Trust Levels</a></li>
+<li class="toc-h4"><a href="#aip-provenance-level-1-self-reported-default">Level 1: Self-Reported (Default)</a></li>
+<li class="toc-h4"><a href="#aip-provenance-level-2-counter-signed">Level 2: Counter-Signed</a></li>
+<li class="toc-h4"><a href="#aip-provenance-level-3-third-party-attested">Level 3: Third-Party Attested</a></li>
+<li class="toc-h3"><a href="#aip-provenance-requirements">3.3 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-provenance-ldp-integration">4. LDP Integration</a></li>
+<li class="toc-h3"><a href="#aip-provenance-overview">4.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-provenance-bidirectional-linking">4.2 Bidirectional Linking</a></li>
+<li class="toc-h3"><a href="#aip-provenance-requirements">4.3 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-provenance-governance-framework-mapping">5. Governance Framework Mapping</a></li>
+<li class="toc-h2"><a href="#aip-provenance-audit-token">6. Audit Token</a></li>
+<li class="toc-h3"><a href="#aip-provenance-concept">6.1 Concept</a></li>
+<li class="toc-h3"><a href="#aip-provenance-properties">6.2 Properties</a></li>
+<li class="toc-h3"><a href="#aip-provenance-requirements">6.3 Requirements</a></li>
+<li class="toc-h1"><a href="#aip-bindings-mcp">aip-bindings-mcp</a></li>
+<li class="toc-h2"><a href="#aip-bindings-mcp-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-bindings-mcp-token-transport">2. Token Transport</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-x-aip-token-header">2.1 X-AIP-Token Header</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-token-by-reference">2.2 Token-by-Reference</a></li>
+<li class="toc-h2"><a href="#aip-bindings-mcp-server-side-verification">3. Server-Side Verification</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-step-1-extract-token">Step 1: Extract Token</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-step-2-verify-signatures">Step 2: Verify Signatures</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-step-3-check-policy">Step 3: Check Policy</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-step-4-check-chain-constraints-chained-mode">Step 4: Check Chain Constraints (Chained Mode)</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-step-5-inject-verified-identity">Step 5: Inject Verified Identity</a></li>
+<li class="toc-h2"><a href="#aip-bindings-mcp-error-responses">4. Error Responses</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-error-format">4.1 Error Format</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-error-codes">4.2 Error Codes</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-http-status-mapping">4.3 HTTP Status Mapping</a></li>
+<li class="toc-h2"><a href="#aip-bindings-mcp-server-capability-requireaip">5. Server Capability: `require_aip`</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-overview">5.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-identity-document-extension">5.2 Identity Document Extension</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-fields">5.3 Fields</a></li>
+<li class="toc-h3"><a href="#aip-bindings-mcp-requirements">5.4 Requirements</a></li>
+<li class="toc-h1"><a href="#aip-bindings-a2a">aip-bindings-a2a</a></li>
+<li class="toc-h2"><a href="#aip-bindings-a2a-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-bindings-a2a-agent-card-extension-aipidentity">2. Agent Card Extension: `aip_identity`</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-overview">2.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-format">2.2 Format</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-field-definitions">2.3 Field Definitions</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-requirements">2.4 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-bindings-a2a-token-transport-aiptoken-metadata-field">3. Token Transport: `aip_token` Metadata Field</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-overview">3.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-format">3.2 Format</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-requirements">3.3 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-bindings-a2a-verification-flow">4. Verification Flow</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-step-1-discover-agent-card">Step 1: Discover Agent Card</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-step-2-resolve-identity-document">Step 2: Resolve Identity Document</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-step-3-append-delegation-block">Step 3: Append Delegation Block</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-step-4-send-task-with-token">Step 4: Send Task with Token</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-step-5-verify-full-chain">Step 5: Verify Full Chain</a></li>
+<li class="toc-h3"><a href="#aip-bindings-a2a-step-6-further-delegation-optional">Step 6: Further Delegation (Optional)</a></li>
+<li class="toc-h2"><a href="#aip-bindings-a2a-error-handling">5. Error Handling</a></li>
+<li class="toc-h2"><a href="#aip-bindings-a2a-mutual-authentication">6. Mutual Authentication</a></li>
+<li class="toc-h1"><a href="#aip-bindings-http">aip-bindings-http</a></li>
+<li class="toc-h2"><a href="#aip-bindings-http-introduction">1. Introduction</a></li>
+<li class="toc-h2"><a href="#aip-bindings-http-authorization-header">2. Authorization Header</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-format">2.1 Format</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-scheme-registration">2.2 Scheme Registration</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-compatibility">2.3 Compatibility</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-requirements">2.4 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-bindings-http-token-by-reference">3. Token-by-Reference</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-x-aip-token-ref-header">3.1 X-AIP-Token-Ref Header</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-requirements">3.2 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-bindings-http-mutual-authentication">4. Mutual Authentication</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-overview">4.1 Overview</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-caller-authentication-default">4.2 Caller Authentication (Default)</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-receiver-authentication">4.3 Receiver Authentication</a></li>
+<li class="toc-h3"><a href="#aip-bindings-http-requirements">4.4 Requirements</a></li>
+<li class="toc-h2"><a href="#aip-bindings-http-verification">5. Verification</a></li>
+</ul></nav></aside>
+<main class="spec-content">
+<section id="aip-core">
+<h2>AIP Core: Identity Scheme and Resolution</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-core-introduction">1. Introduction</h3>
+
+<p>This document defines the AIP identity scheme, identity document format, self-signature mechanism, resolution algorithm, and version compatibility rules. All identifiers, documents, and resolution behavior described here are normative.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-core-identifier-format">2. Identifier Format</h3>
+
+<p>AIP defines two identifier schemes: DNS-based identifiers for long-lived agents and self-certifying identifiers for ephemeral agents.</p>
+
+<h4 id="aip-core-abnf-grammar">2.1 ABNF Grammar</h4>
+
+<p>The identifier format is defined using ABNF (<a href="https://www.rfc-editor.org/rfc/rfc5234">RFC 5234</a>):</p>
+
+<pre><code class="lang-abnf">
+aip-identifier  = aip-web-id / aip-key-id
+
+aip-web-id      = "aip:web:" domain "/" path
+domain          = 1*( ALPHA / DIGIT / "-" / "." )
+path            = segment *( "/" segment )
+segment         = 1*( ALPHA / DIGIT / "-" / "_" )
+
+aip-key-id      = "aip:key:" algorithm ":" multibase-key
+algorithm       = "ed25519"          ; v1 supports Ed25519 only
+multibase-key   = "z" 1*BASE58CHAR  ; multibase with base58btc prefix
+BASE58CHAR      = %x31-39 / %x41-48 / %x4A-4E / %x50-5A
+                / %x61-6B / %x6D-7A
+                ; 1-9, A-H, J-N, P-Z, a-k, m-z (no 0, I, O, l)
+</code></pre>
+
+<h4 id="aip-core-dns-based-identifiers-aipweb">2.2 DNS-Based Identifiers (<code>aip:web:</code>)</h4>
+
+<p>DNS-based identifiers are for long-lived agents with stable domain-backed identities.</p>
+
+<p><strong>Format:</strong></p>
+<pre><code>
+aip:web:&lt;domain&gt;/&lt;path&gt;
+</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>
+aip:web:jamjet.dev/agents/research-analyst
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>The <code>domain</code> component <span class="rfc2119">MUST</span> be a valid DNS hostname.</li>
+<li>The <code>path</code> component <span class="rfc2119">MUST</span> contain at least one segment.</li>
+<li>Implementations <span class="rfc2119">MUST</span> resolve <code>aip:web:</code> identifiers via HTTPS as defined in Section 5.</li>
+
+</ul><h4 id="aip-core-self-certifying-identifiers-aipkey">2.3 Self-Certifying Identifiers (<code>aip:key:</code>)</h4>
+
+<p>Self-certifying identifiers are for ephemeral agents. The identifier IS the public key. No resolution is needed; verification is immediate.</p>
+
+<p><strong>Format:</strong></p>
+<pre><code>
+aip:key:ed25519:&lt;multibase-encoded-public-key&gt;
+</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>
+aip:key:ed25519:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>The algorithm component <span class="rfc2119">MUST</span> be <code>ed25519</code> in v1.</li>
+<li>The multibase-key <span class="rfc2119">MUST</span> use base58btc encoding (prefix <code>z</code>).</li>
+<li>The decoded key <span class="rfc2119">MUST</span> be exactly 32 bytes (Ed25519 public key length).</li>
+<li>Implementations <span class="rfc2119">MUST NOT</span> attempt DNS resolution for <code>aip:key:</code> identifiers.</li>
+
+</ul><hr/>
+
+<h3 id="aip-core-identity-document">3. Identity Document</h3>
+
+<p>An AIP identity document describes an agent's identity, public keys, delegation preferences, protocol support, and extensions.</p>
+
+<h4 id="aip-core-json-schema">3.1 JSON Schema</h4>
+
+<p>Identity documents <span class="rfc2119">MUST</span> conform to the following structure:</p>
+
+<pre><code class="lang-json">
+{
+  "aip": "1.0",
+  "id": "aip:web:jamjet.dev/agents/research-analyst",
+  "public_keys": [
+    {
+      "id": "key-1",
+      "type": "Ed25519",
+      "public_key_multibase": "z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP",
+      "valid_from": "2026-03-01T00:00:00Z",
+      "valid_until": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "name": "Research Analyst",
+  "delegation": {
+    "max_depth": 3,
+    "allow_ephemeral_grants": true
+  },
+  "protocols": {
+    "mcp": { "header": "X-AIP-Token" },
+    "a2a": { "agent_card_field": "aip_identity" }
+  },
+  "revocation": {
+    "endpoint": "https://jamjet.dev/.well-known/aip/revocations",
+    "method": "crl"
+  },
+  "extensions": {
+    "ldp": "aip:web:jamjet.dev/agents/research-analyst#ldp",
+    "oauth": { "issuer": "https://auth.jamjet.dev", "client_id": "research-analyst" }
+  },
+  "document_signature": "&lt;Ed25519 signature of canonical document by key-1&gt;",
+  "expires": "2026-06-22T00:00:00Z"
+}
+</code></pre>
+
+<h4 id="aip-core-field-definitions">3.2 Field Definitions</h4>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>aip</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>Protocol version as <code>major.minor</code>. <span class="rfc2119">MUST</span> be <code>"1.0"</code> for this specification.</td></tr>
+<tr><td><code>id</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>The AIP identifier of the agent. <span class="rfc2119">MUST</span> match the <code>aip-identifier</code> grammar (Section 2.1).</td></tr>
+<tr><td><code>public_keys</code></td><td>array</td><td><span class="rfc2119">REQUIRED</span></td><td>One or more public key objects. <span class="rfc2119">MUST</span> contain at least one entry.</td></tr>
+<tr><td><code>public_keys[].id</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>A locally-unique key identifier (e.g., <code>"key-1"</code>).</td></tr>
+<tr><td><code>public_keys[].type</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>Key algorithm. <span class="rfc2119">MUST</span> be <code>"Ed25519"</code> in v1.</td></tr>
+<tr><td><code>public_keys[].public_key_multibase</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>The public key in multibase base58btc encoding.</td></tr>
+<tr><td><code>public_keys[].valid_from</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>ISO 8601 UTC timestamp indicating when this key becomes valid.</td></tr>
+<tr><td><code>public_keys[].valid_until</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>ISO 8601 UTC timestamp indicating when this key expires.</td></tr>
+<tr><td><code>name</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>Human-readable agent name.</td></tr>
+<tr><td><code>delegation</code></td><td>object</td><td><span class="rfc2119">OPTIONAL</span></td><td>Delegation preferences.</td></tr>
+<tr><td><code>delegation.max_depth</code></td><td>integer</td><td><span class="rfc2119">OPTIONAL</span></td><td>Maximum delegation chain depth. Default is 3.</td></tr>
+<tr><td><code>delegation.allow_ephemeral_grants</code></td><td>boolean</td><td><span class="rfc2119">OPTIONAL</span></td><td>Whether this agent permits ephemeral sub-agent grants. Default is <code>true</code>.</td></tr>
+<tr><td><code>protocols</code></td><td>object</td><td><span class="rfc2119">OPTIONAL</span></td><td>Protocol-specific configuration.</td></tr>
+<tr><td><code>protocols.mcp</code></td><td>object</td><td><span class="rfc2119">OPTIONAL</span></td><td>MCP binding configuration.</td></tr>
+<tr><td><code>protocols.mcp.header</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>Header name for AIP tokens. Default is <code>"X-AIP-Token"</code>.</td></tr>
+<tr><td><code>protocols.mcp.require_aip</code></td><td>boolean</td><td><span class="rfc2119">OPTIONAL</span></td><td>If <code>true</code>, the server rejects anonymous calls.</td></tr>
+<tr><td><code>protocols.mcp.minimum_policy_profile</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>Minimum policy profile required (<code>"simple"</code>, <code>"standard"</code>, <code>"advanced"</code>).</td></tr>
+<tr><td><code>protocols.a2a</code></td><td>object</td><td><span class="rfc2119">OPTIONAL</span></td><td>A2A binding configuration.</td></tr>
+<tr><td><code>protocols.a2a.agent_card_field</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>Field name in agent card. Default is <code>"aip_identity"</code>.</td></tr>
+<tr><td><code>revocation</code></td><td>object</td><td><span class="rfc2119">OPTIONAL</span></td><td>Revocation configuration.</td></tr>
+<tr><td><code>revocation.endpoint</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>URL for the revocation list. <span class="rfc2119">MUST</span> be HTTPS.</td></tr>
+<tr><td><code>revocation.method</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>Revocation method. <span class="rfc2119">MUST</span> be <code>"crl"</code> in v1. CRL format is deferred to v2.</td></tr>
+<tr><td><code>extensions</code></td><td>object</td><td><span class="rfc2119">OPTIONAL</span></td><td>Extension fields for LDP, OAuth, or any future protocol.</td></tr>
+<tr><td><code>document_signature</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>Ed25519 signature over the canonical document (see Section 4).</td></tr>
+<tr><td><code>expires</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>ISO 8601 UTC timestamp. The document <span class="rfc2119">MUST NOT</span> be trusted after this time.</td></tr>
+</table>
+
+<h4 id="aip-core-self-certifying-identity-documents">3.3 Self-Certifying Identity Documents</h4>
+
+<p>For <code>aip:key:</code> identifiers, the identity document is self-constructed by the agent rather than fetched via DNS. The document <span class="rfc2119">MUST</span> contain:</p>
+
+<ul><li><code>aip</code>: <code>"1.0"</code></li>
+<li><code>id</code>: the full <code>aip:key:ed25519:&lt;multibase-key&gt;</code> identifier</li>
+<li><code>public_keys</code>: a single entry derived from the identifier itself</li>
+<li><code>document_signature</code>: signed by the embedded key</li>
+<li><code>expires</code>: <span class="rfc2119">REQUIRED</span></li>
+
+</ul><p>All other fields are <span class="rfc2119">OPTIONAL</span>.</p>
+
+<hr/>
+
+<h3 id="aip-core-self-signature-mechanism">4. Self-Signature Mechanism</h3>
+
+<h4 id="aip-core-canonicalization">4.1 Canonicalization</h4>
+
+<p>Identity documents <span class="rfc2119">MUST</span> be canonicalized using <a href="https://www.rfc-editor.org/rfc/rfc8785">RFC 8785 JSON Canonicalization Scheme (JCS)</a> before signing. JCS produces a deterministic byte representation by:</p>
+
+<ul><li>Sorting all object keys lexicographically by Unicode code point.</li>
+<li>Using no whitespace between tokens.</li>
+<li>Applying deterministic number serialization.</li>
+
+</ul><h4 id="aip-core-signing-process">4.2 Signing Process</h4>
+
+<ul><li>Construct the identity document with all fields populated EXCEPT <code>document_signature</code>.</li>
+<li>Serialize the document using RFC 8785 JCS canonicalization.</li>
+<li>Sign the canonical byte sequence using the Ed25519 private key corresponding to one of the listed <code>public_keys</code>.</li>
+<li>Set <code>document_signature</code> to the base64url-encoded (no padding) Ed25519 signature.</li>
+
+</ul><h4 id="aip-core-verification-process">4.3 Verification Process</h4>
+
+<ul><li>Parse the identity document.</li>
+<li>Remove the <code>document_signature</code> field from the parsed object.</li>
+<li>Re-canonicalize the remaining fields using RFC 8785 JCS.</li>
+<li>Verify the <code>document_signature</code> against the canonical bytes using each <code>public_keys</code> entry whose <code>valid_from</code> &lt;= current time &lt;= <code>valid_until</code>.</li>
+<li>If any currently-valid key produces a successful verification, the document is authentic.</li>
+
+</ul><p><strong>Requirements:</strong></p>
+
+<ul><li>Identity documents <span class="rfc2119">MUST</span> include a <code>document_signature</code> field.</li>
+<li>Verifiers <span class="rfc2119">MUST</span> check the document signature before trusting any fields in the document.</li>
+<li>If the signature does not verify against any currently-valid key, the document <span class="rfc2119">MUST</span> be rejected.</li>
+
+</ul><h4 id="aip-core-security-properties">4.4 Security Properties</h4>
+
+<p>The self-signature provides content authentication independent of transport security. Even if the hosting domain is compromised (DNS hijack, CDN compromise), an attacker cannot forge a valid identity document without the private key. HTTPS authenticates the transport; the signature authenticates the content.</p>
+
+<hr/>
+
+<h3 id="aip-core-resolution-algorithm">5. Resolution Algorithm</h3>
+
+<h4 id="aip-core-aipweb-resolution">5.1 <code>aip:web:</code> Resolution</h4>
+
+<p>To resolve a DNS-based AIP identifier:</p>
+
+<ul><li>Parse the identifier to extract <code>&lt;domain&gt;</code> and <code>&lt;path&gt;</code>.</li>
+<li>Construct the resolution URL: <code>https://&lt;domain&gt;/.well-known/aip/&lt;path&gt;.json</code></li>
+<li>Fetch the URL via HTTPS GET.</li>
+<li>Parse the response as JSON.</li>
+<li>Verify the <code>aip</code> version field (see Section 6).</li>
+<li>Verify the <code>document_signature</code> (see Section 4.3).</li>
+<li>Verify that <code>expires</code> is in the future.</li>
+<li>Verify that at least one key in <code>public_keys</code> is currently valid (<code>valid_from</code> &lt;= now &lt;= <code>valid_until</code>).</li>
+<li>Return the verified identity document.</li>
+
+</ul><p><strong>Example:</strong></p>
+
+<p>Identifier: <code>aip:web:jamjet.dev/agents/research-analyst</code></p>
+
+<p>Resolves via:</p>
+<pre><code>
+GET https://jamjet.dev/.well-known/aip/agents/research-analyst.json
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Resolution <span class="rfc2119">MUST</span> use HTTPS. HTTP <span class="rfc2119">MUST NOT</span> be accepted.</li>
+<li>Implementations <span class="rfc2119">SHOULD</span> cache resolved identity documents. Cache TTL <span class="rfc2119">SHOULD NOT</span> exceed 5 minutes.</li>
+<li>If resolution fails (network error, non-200 status, invalid JSON, signature failure), the identifier <span class="rfc2119">MUST</span> be treated as unresolvable.</li>
+
+</ul><h4 id="aip-core-aipkey-resolution">5.2 <code>aip:key:</code> Resolution</h4>
+
+<p>Self-certifying identifiers require no network resolution:</p>
+
+<ul><li>Parse the identifier to extract the algorithm and multibase-encoded public key.</li>
+<li>Decode the public key from multibase.</li>
+<li>Construct a minimal identity document with the extracted key.</li>
+<li>The identity is immediately usable for signature verification.</li>
+
+</ul><p><strong>Requirements:</strong></p>
+
+<ul><li>Implementations <span class="rfc2119">MUST NOT</span> perform any network request for <code>aip:key:</code> identifiers.</li>
+<li>The decoded public key <span class="rfc2119">MUST</span> be validated (correct length for the algorithm).</li>
+
+</ul><hr/>
+
+<h3 id="aip-core-version-compatibility">6. Version Compatibility</h3>
+
+<h4 id="aip-core-version-field">6.1 Version Field</h4>
+
+<p>The <code>aip</code> field in identity documents uses a <code>major.minor</code> format (e.g., <code>"1.0"</code>).</p>
+
+<h4 id="aip-core-rules">6.2 Rules</h4>
+
+<ul><li>Implementations <span class="rfc2119">MUST</span> parse the <code>aip</code> field as a semver <code>major.minor</code> string.</li>
+<li>An implementation <span class="rfc2119">MUST</span> reject documents with a higher major version than it supports.</li>
+<li>An implementation <span class="rfc2119">MAY</span> accept documents with a higher minor version than it implements, provided the major version matches.</li>
+<li>Unknown fields in identity documents <span class="rfc2119">MUST</span> be ignored (forward compatibility).</li>
+<li>This allows the spec to add optional fields in minor versions without breaking existing implementations.</li>
+
+</ul><hr/>
+
+<h3 id="aip-core-design-decisions">7. Design Decisions</h3>
+
+<ul><li><strong>Ed25519 only for v1.</strong> Fast, small signatures, widely supported. No algorithm negotiation complexity.</li>
+<li><strong>Extensions field.</strong> LDP, OAuth, or any future protocol can link here without polluting the core schema.</li>
+<li><strong>Expires field.</strong> Forces rotation. No permanent identities.</li>
+<li><strong>Multiple keys with validity windows.</strong> Enables zero-downtime key rotation.</li>
+<li><strong>Document self-signature.</strong> Protects against domain compromise. HTTPS authenticates the transport; the signature authenticates the content.</li></ul>
+</section>
+<section id="aip-tokens">
+<h2>AIP Tokens: Compact and Chained Token Formats</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-tokens-introduction">1. Introduction</h3>
+
+<p>This document defines the two AIP token formats -- compact mode (JWT wire format) and chained mode (Biscuit wire format) -- their structure, mode detection, claim mapping, budget semantics, policy profiles, and token size guidance.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-tokens-token-modes-overview">2. Token Modes Overview</h3>
+
+<p>AIP supports two token modes:</p>
+
+<table>
+<tr><th>Property</th><th>Compact Mode</th><th>Chained Mode</th></tr>
+<tr><td>Wire format</td><td>JWT (<a href="https://www.rfc-editor.org/rfc/rfc7519">RFC 7519</a>)</td><td>Biscuit (<a href="https://www.biscuitsec.org/">Biscuit specification</a>)</td></tr>
+<tr><td>Delegation hops</td><td>One hop only</td><td>Multi-hop with append-only blocks</td></tr>
+<tr><td>Scope attenuation</td><td>Static at issuance</td><td>Per-block attenuation</td></tr>
+<tr><td>Provenance binding</td><td>Not supported</td><td>Completion blocks</td></tr>
+<tr><td>Library requirements</td><td>Standard JWT libraries</td><td>Biscuit libraries</td></tr>
+<tr><td>Use when</td><td>Single-agent setups, MCP server auth, quick integration</td><td>Multi-agent orchestration, cross-org delegation, audit requirements</td></tr>
+</table>
+
+<p>Both modes use the same transport mechanism: <code>X-AIP-Token</code> header or <code>Authorization: AIP &lt;token&gt;</code>.</p>
+
+<hr/>
+
+<h3 id="aip-tokens-compact-mode-jwt-wire-format">3. Compact Mode (JWT Wire Format)</h3>
+
+<h4 id="aip-tokens-jwt-header">3.1 JWT Header</h4>
+
+<p>Compact mode tokens <span class="rfc2119">MUST</span> use the following JWT header:</p>
+
+<pre><code class="lang-json">
+{
+  "alg": "EdDSA",
+  "typ": "aip+jwt"
+}
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>The <code>alg</code> field <span class="rfc2119">MUST</span> be <code>"EdDSA"</code> (Ed25519 signatures).</li>
+<li>The <code>typ</code> field <span class="rfc2119">MUST</span> be <code>"aip+jwt"</code> to distinguish AIP tokens from other JWTs.</li>
+
+</ul><h4 id="aip-tokens-jwt-claims">3.2 JWT Claims</h4>
+
+<p>The payload <span class="rfc2119">MUST</span> include the following registered and private claims:</p>
+
+<pre><code class="lang-json">
+{
+  "iss": "aip:web:jamjet.dev/agents/orchestrator",
+  "sub": "aip:web:jamjet.dev/agents/research-analyst",
+  "scope": ["tool:search", "tool:browse"],
+  "budget_usd": 0.50,
+  "max_depth": 0,
+  "iat": 1711100000,
+  "exp": 1711103600
+}
+</code></pre>
+
+<h4 id="aip-tokens-claim-definitions">3.3 Claim Definitions</h4>
+
+<table>
+<tr><th>Claim</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>iss</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>AIP identifier of the token issuer. <span class="rfc2119">MUST</span> be a valid AIP identifier.</td></tr>
+<tr><td><code>sub</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>AIP identifier of the token holder (the agent authorized to use this token).</td></tr>
+<tr><td><code>scope</code></td><td>array of strings</td><td><span class="rfc2119">REQUIRED</span></td><td>List of authorized capabilities. Each entry is a capability string (e.g., <code>"tool:search"</code>, <code>"tool:*"</code>).</td></tr>
+<tr><td><code>budget_usd</code></td><td>number</td><td><span class="rfc2119">OPTIONAL</span></td><td>Per-token authorization ceiling in USD. See Section 6 for budget semantics.</td></tr>
+<tr><td><code>max_depth</code></td><td>integer</td><td><span class="rfc2119">REQUIRED</span></td><td>Maximum further delegation depth. <code>0</code> means the holder <span class="rfc2119">MUST NOT</span> delegate further.</td></tr>
+<tr><td><code>iat</code></td><td>integer</td><td><span class="rfc2119">REQUIRED</span></td><td>Issued-at timestamp (seconds since Unix epoch, per RFC 7519).</td></tr>
+<tr><td><code>exp</code></td><td>integer</td><td><span class="rfc2119">REQUIRED</span></td><td>Expiration timestamp (seconds since Unix epoch, per RFC 7519).</td></tr>
+</table>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li><code>iss</code> and <code>sub</code> <span class="rfc2119">MUST</span> be valid AIP identifiers as defined in the AIP Core specification.</li>
+<li><code>scope</code> <span class="rfc2119">MUST</span> contain at least one entry.</li>
+<li><code>max_depth</code> of <code>0</code> means the token holder <span class="rfc2119">MUST NOT</span> delegate further. This is a constraint on the holder, not a counter of hops taken.</li>
+<li><code>exp</code> <span class="rfc2119">SHOULD</span> be set to a short duration. Compact mode tokens <span class="rfc2119">SHOULD</span> have a lifetime of less than 1 hour.</li>
+
+</ul><hr/>
+
+<h3 id="aip-tokens-chained-mode-biscuit-wire-format">4. Chained Mode (Biscuit Wire Format)</h3>
+
+<h4 id="aip-tokens-overview">4.1 Overview</h4>
+
+<p>Chained mode uses the <a href="https://www.biscuitsec.org/">Biscuit</a> token format: an append-only block chain where each block is signed with Ed25519. This enables multi-hop delegation with scope attenuation at each hop and provenance binding via completion blocks.</p>
+
+<h4 id="aip-tokens-block-structure">4.2 Block Structure</h4>
+
+<p>A chained mode token consists of an ordered sequence of blocks:</p>
+
+<p><strong>Block 0 (Authority)</strong> -- signed by the root identity (human or system):</p>
+
+<pre><code>
+Block 0 (Authority) -- signed by root (human/system)
+  identity: aip:web:jamjet.dev/agents/orchestrator
+  capabilities: [tool:*, delegate:*, budget:5.00]
+  max_depth: 3
+  expires: 2026-03-22T12:00:00Z
+</code></pre>
+
+<p><strong>Block 1..N-1 (Delegation)</strong> -- each signed by the delegator:</p>
+
+<pre><code>
+Block 1 (Delegation) -- signed by orchestrator
+  delegator: aip:web:jamjet.dev/agents/orchestrator
+  delegate: aip:web:jamjet.dev/agents/research-analyst
+  attenuate: [tool:search, tool:browse, budget:0.50]
+  context: "research subtask for query X"
+</code></pre>
+
+<p><strong>Block N (Completion)</strong> -- signed by the executing agent (see AIP Provenance specification):</p>
+
+<pre><code>
+Block N (Completion) -- signed by ephemeral sub-agent
+  status: completed
+  result_hash: sha256:abc123...
+  verification_status: tool_verified
+  tokens_used: 1200
+  cost_usd: 0.03
+</code></pre>
+
+<h4 id="aip-tokens-block-0-authority-facts">4.3 Block 0 (Authority) Facts</h4>
+
+<p>Block 0 <span class="rfc2119">MUST</span> contain the following Biscuit facts:</p>
+
+<table>
+<tr><th>Fact</th><th>Description</th></tr>
+<tr><td><code>identity($id)</code></td><td>AIP identifier of the root authority.</td></tr>
+<tr><td><code>right($capability)</code></td><td>One fact per authorized capability (e.g., <code>right("tool:search")</code>).</td></tr>
+<tr><td><code>budget($amount)</code></td><td>Authorization budget ceiling in USD.</td></tr>
+<tr><td><code>max_depth($depth)</code></td><td>Maximum delegation chain depth.</td></tr>
+<tr><td><code>expires($timestamp)</code></td><td>Expiration timestamp.</td></tr>
+</table>
+
+<h4 id="aip-tokens-delegation-block-facts">4.4 Delegation Block Facts</h4>
+
+<p>Each delegation block (Block 1..N-1) <span class="rfc2119">MUST</span> contain:</p>
+
+<table>
+<tr><th>Fact</th><th>Description</th></tr>
+<tr><td><code>delegator($id)</code></td><td>AIP identifier of the delegating agent.</td></tr>
+<tr><td><code>delegate($id)</code></td><td>AIP identifier of the receiving agent.</td></tr>
+<tr><td><code>right($capability)</code></td><td>Attenuated capabilities (<span class="rfc2119">MUST</span> be a subset of the parent block).</td></tr>
+<tr><td><code>budget($amount)</code></td><td>Attenuated budget ceiling (<span class="rfc2119">MUST</span> be &lt;= parent budget).</td></tr>
+<tr><td><code>context($text)</code></td><td>Non-empty string describing the delegation reason.</td></tr>
+</table>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Each delegation block <span class="rfc2119">MUST</span> be signed by the delegator.</li>
+<li>The <code>context</code> field <span class="rfc2119">MUST</span> be non-empty. Verifiers <span class="rfc2119">MUST</span> reject tokens with missing or empty context fields.</li>
+<li>Scope attenuation is enforced cryptographically: each block's capabilities <span class="rfc2119">MUST</span> be a subset of the parent block's capabilities.</li>
+
+</ul><hr/>
+
+<h3 id="aip-tokens-mode-detection-and-upgrade">5. Mode Detection and Upgrade</h3>
+
+<h4 id="aip-tokens-mode-detection">5.1 Mode Detection</h4>
+
+<p>Receivers <span class="rfc2119">MUST</span> detect the token mode by inspecting the token content:</p>
+
+<ul><li><strong>Compact mode:</strong> Token decodes as a JWT with header <code>typ: "aip+jwt"</code>.</li>
+<li><strong>Chained mode:</strong> Token begins with Biscuit magic bytes.</li>
+
+</ul><p>Implementations <span class="rfc2119">MUST</span> support both detection methods.</p>
+
+<h4 id="aip-tokens-compact-to-chained-mapping">5.2 Compact-to-Chained Mapping</h4>
+
+<p>When upgrading from compact to chained mode, the issuer creates a new chained token (Block 0) using the same key and equivalent claims. The compact JWT claims map to Biscuit authority facts as follows:</p>
+
+<table>
+<tr><th>JWT Claim</th><th>Biscuit Authority Fact</th></tr>
+<tr><td><code>iss</code></td><td><code>identity($iss)</code></td></tr>
+<tr><td><code>sub</code></td><td><code>delegate($sub)</code></td></tr>
+<tr><td><code>scope</code> (each entry)</td><td><code>right($scope_item)</code></td></tr>
+<tr><td><code>budget_usd</code></td><td><code>budget($budget_usd)</code></td></tr>
+<tr><td><code>max_depth</code></td><td><code>max_depth($max_depth)</code></td></tr>
+<tr><td><code>exp</code></td><td><code>expires($exp)</code></td></tr>
+</table>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Upgrade from compact to chained REQUIRES re-issuance. The original compact JWT is NOT embedded in the chained token.</li>
+<li>The new chained token <span class="rfc2119">MUST</span> be signed by the same key that signed the compact JWT.</li>
+<li>All claims from the compact token <span class="rfc2119">MUST</span> be faithfully represented in the chained token's Block 0 facts.</li>
+
+</ul><hr/>
+
+<h3 id="aip-tokens-budget-semantics">6. Budget Semantics</h3>
+
+<p>Budget fields (<code>budget_usd</code> in compact mode, <code>budget</code> facts in chained mode) represent <strong>per-token authorization limits</strong>, not running balances.</p>
+
+<h4 id="aip-tokens-enforcement-model">6.1 Enforcement Model</h4>
+
+<p>Budget is enforced by the <strong>delegator at delegation time</strong> and the <strong>verifier at invocation time</strong>, not tracked across invocations:</p>
+
+<ul><li><strong>At delegation time:</strong> When Agent A delegates to Agent B with <code>budget:0.50</code>, Agent A is asserting "I authorize B to spend up to $0.50 on this task." Agent A is responsible for partitioning its own budget across sub-delegations.</li>
+
+<li><strong>At invocation time:</strong> The verifier (MCP server, A2A receiver) checks that the declared budget in the token is non-negative. It does NOT track cumulative spend.</li>
+
+<li><strong>At completion time:</strong> The completion block records actual <code>cost_usd</code> spent. This is for audit, not enforcement.</li>
+
+<li><strong>Aggregate enforcement</strong> is the responsibility of the runtime (e.g., an orchestration platform's cost tracking), not the token. AIP tokens authorize a ceiling; runtimes enforce the floor.</li>
+
+</ul><h4 id="aip-tokens-analogy">6.2 Analogy</h4>
+
+<p>This is analogous to a credit card authorization: the token says "authorized up to $X", the merchant checks the limit, but the bank (runtime) tracks the running balance.</p>
+
+<h4 id="aip-tokens-requirements">6.3 Requirements</h4>
+
+<ul><li>Budget values in delegation blocks <span class="rfc2119">MUST</span> be less than or equal to the parent block's budget.</li>
+<li>Verifiers <span class="rfc2119">MUST</span> check that the declared budget is non-negative.</li>
+<li>Verifiers <span class="rfc2119">MUST NOT</span> track cumulative spend across invocations using the token alone.</li>
+<li>Completion blocks <span class="rfc2119">SHOULD</span> record actual <code>cost_usd</code> for audit purposes.</li>
+
+</ul><hr/>
+
+<h3 id="aip-tokens-policy-profiles-chained-mode">7. Policy Profiles (Chained Mode)</h3>
+
+<p>Datalog policies in chained mode blocks use one of three profiles. Policy profiles apply only to chained mode tokens.</p>
+
+<h4 id="aip-tokens-simple-profile">7.1 Simple Profile</h4>
+
+<p>Templated rules requiring no Datalog knowledge. Users specify values and the library generates canonical Datalog. The canonical Datalog templates are normative: implementations <span class="rfc2119">MUST</span> generate exactly these patterns.</p>
+
+<p><strong>Tool allowlist template:</strong></p>
+<pre><code class="lang-datalog">
+check if tool($tool), ["search", "browse"].contains($tool);
+</code></pre>
+
+<p><strong>Budget ceiling template:</strong></p>
+<pre><code class="lang-datalog">
+check if budget($b), $b &lt;= 0.50;
+</code></pre>
+
+<p><strong>Delegation depth template:</strong></p>
+<pre><code class="lang-datalog">
+check if depth($d), $d &lt;= 3;
+</code></pre>
+
+<p><strong>Time expiry template:</strong></p>
+<pre><code class="lang-datalog">
+check if time($t), $t &lt;= 2026-03-22T12:00:00Z;
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Implementations <span class="rfc2119">MUST</span> generate exactly the canonical Datalog patterns shown above for Simple profile policies.</li>
+<li>The templates are fixed across implementations to ensure interoperability.</li>
+<li>Users specify configuration values (e.g., <code>tools: [search, browse], budget: 0.50, max_depth: 3</code>) and the library generates the canonical Datalog.</li>
+
+</ul><h4 id="aip-tokens-standard-profile">7.2 Standard Profile</h4>
+
+<p>Curated Datalog subset. No recursion. Bounded evaluation.</p>
+
+<pre><code class="lang-datalog">
+check if tool($tool), delegator($d),
+  trust_domain($d, $domain),
+  ["research", "internal"].contains($domain);
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Standard profile policies <span class="rfc2119">MUST NOT</span> use recursive rules.</li>
+<li>Evaluation <span class="rfc2119">MUST</span> be bounded.</li>
+
+</ul><h4 id="aip-tokens-advanced-profile">7.3 Advanced Profile</h4>
+
+<p>Full Datalog for enterprise policies. Opt-in, with evaluation depth limits.</p>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Advanced profile is opt-in. Implementations <span class="rfc2119">MAY</span> choose not to support it.</li>
+<li>Evaluation <span class="rfc2119">MUST</span> be limited to a maximum of 1000 iterations.</li>
+<li>Implementations that support Advanced profile <span class="rfc2119">MUST</span> enforce the iteration limit.</li>
+
+</ul><hr/>
+
+<h3 id="aip-tokens-token-size-considerations">8. Token Size Considerations</h3>
+
+<h4 id="aip-tokens-size-guidance">8.1 Size Guidance</h4>
+
+<table>
+<tr><th>Mode</th><th>Typical Size</th><th>Notes</th></tr>
+<tr><td>Compact mode</td><td>200-500 bytes</td><td>No size concern.</td></tr>
+<tr><td>Chained mode</td><td>~200-400 bytes per block</td><td>A 3-hop chain with simple policies and completion block is approximately 1.5KB. Fits within standard HTTP header limits (8KB).</td></tr>
+</table>
+
+<h4 id="aip-tokens-token-by-reference">8.2 Token-by-Reference</h4>
+
+<p>For chains exceeding 4KB, implementations <span class="rfc2119">MAY</span> use a token reference instead of inlining the full token:</p>
+
+<pre><code>
+X-AIP-Token-Ref: https://issuer.example/.well-known/aip/tokens/&lt;token-id&gt;
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>The reference URL <span class="rfc2119">MUST</span> use HTTPS.</li>
+<li>The response at the reference URL <span class="rfc2119">MUST</span> include the token's self-authenticating signature chain. No additional trust beyond the token's own signatures is required.</li>
+<li>Receivers <span class="rfc2119">MUST</span> fetch and verify the full token from the reference URL before processing.</li>
+
+</ul><h4 id="aip-tokens-recommended-chain-depth">8.3 Recommended Chain Depth</h4>
+
+<p>The recommended maximum chain depth is 5 blocks (authority + 3 delegations + completion). This is a <span class="rfc2119">SHOULD</span>, not a <span class="rfc2119">MUST</span>. Implementations <span class="rfc2119">SHOULD</span> warn when tokens approach this depth.</p>
+</section>
+<section id="aip-delegation">
+<h2>AIP Delegation and Lifecycle</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-delegation-introduction">1. Introduction</h3>
+
+<p>This document defines AIP delegation rules, scope attenuation, bounded depth, delegation context requirements, ephemeral agent grants, key rotation, and revocation mechanisms.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-delegation-scope-attenuation-rules">2. Scope Attenuation Rules</h3>
+
+<h4 id="aip-delegation-fundamental-rule">2.1 Fundamental Rule</h4>
+
+<p><strong>Scope can only narrow, never widen.</strong> Each delegation block <span class="rfc2119">MUST</span> represent a subset of the capabilities granted by its parent block. This is enforced cryptographically: each block is signed by the delegator, and the verifier checks attenuation at every hop.</p>
+
+<h4 id="aip-delegation-attenuation-dimensions">2.2 Attenuation Dimensions</h4>
+
+<p>Attenuation applies along all capability dimensions:</p>
+
+<table>
+<tr><th>Dimension</th><th>Attenuation Rule</th></tr>
+<tr><td>Tools</td><td>Child block tool set <span class="rfc2119">MUST</span> be a subset of parent block tool set.</td></tr>
+<tr><td>Budget</td><td>Child block budget <span class="rfc2119">MUST</span> be less than or equal to parent block budget.</td></tr>
+<tr><td>Domains</td><td>Child block domain set <span class="rfc2119">MUST</span> be a subset of parent block domain set.</td></tr>
+<tr><td>Time</td><td>Child block expiration <span class="rfc2119">MUST</span> be less than or equal to parent block expiration.</td></tr>
+</table>
+
+<h4 id="aip-delegation-example">2.3 Example</h4>
+
+<pre><code>
+Block 0: tools:[*], budget:5.00, domains:[*]
+  Block 1: tools:[search,browse], budget:0.50, domains:[research]
+    Block 2: tools:[search], budget:0.10, domains:[research]
+</code></pre>
+
+<p>In this chain:</p>
+<ul><li>Block 1 narrows tools from <code>[<em>]</code> to <code>[search, browse]</code>, budget from <code>5.00</code> to <code>0.50</code>, and domains from <code>[</em>]</code> to <code>[research]</code>.</li>
+<li>Block 2 further narrows tools to <code>[search]</code> only and budget to <code>0.10</code>.</li>
+
+</ul><h4 id="aip-delegation-requirements">2.4 Requirements</h4>
+
+<ul><li>Each delegation block <span class="rfc2119">MUST</span> contain capabilities that are a subset of its parent block's capabilities.</li>
+<li>Attempting to widen scope (adding tools, increasing budget, expanding domains, extending expiration) <span class="rfc2119">MUST</span> cause verification to fail.</li>
+<li>Verifiers <span class="rfc2119">MUST</span> check attenuation at every hop in the delegation chain.</li>
+<li>A wildcard capability (<code>*</code>) in a parent block permits any specific capability in child blocks.</li>
+<li>A specific capability in a parent block <span class="rfc2119">MUST NOT</span> be widened to a wildcard in a child block.</li>
+
+</ul><hr/>
+
+<h3 id="aip-delegation-bounded-depth">3. Bounded Depth</h3>
+
+<h4 id="aip-delegation-depth-limit">3.1 Depth Limit</h4>
+
+<p>Block 0 declares the maximum delegation chain depth via the <code>max_depth</code> field.</p>
+
+<h4 id="aip-delegation-default-depth">3.2 Default Depth</h4>
+
+<p>The default <code>max_depth</code> is <strong>3</strong>. This means up to 3 delegation blocks may be appended after Block 0 (the authority block), for a total of 4 blocks before the optional completion block.</p>
+
+<h4 id="aip-delegation-compact-mode-depth">3.3 Compact Mode Depth</h4>
+
+<p>In compact mode, <code>max_depth: 0</code> means the token holder <span class="rfc2119">MUST NOT</span> delegate further. This is a constraint on the holder, not a counter of hops taken.</p>
+
+<h4 id="aip-delegation-requirements">3.4 Requirements</h4>
+
+<ul><li>Block 0 <span class="rfc2119">MUST</span> include a <code>max_depth</code> field.</li>
+<li>If <code>max_depth</code> is absent, implementations <span class="rfc2119">MUST</span> use the default value of 3.</li>
+<li>Delegation beyond the declared <code>max_depth</code> <span class="rfc2119">MUST</span> be rejected by verifiers.</li>
+<li>Each delegation block increments the effective depth by 1. The depth of Block N (where Block 0 has depth 0) is N.</li>
+<li>If the current depth equals <code>max_depth</code>, further delegation <span class="rfc2119">MUST NOT</span> be permitted.</li>
+
+</ul><hr/>
+
+<h3 id="aip-delegation-delegation-context">4. Delegation Context</h3>
+
+<h4 id="aip-delegation-context-requirement">4.1 Context Requirement</h4>
+
+<p>Each delegation block <span class="rfc2119">MUST</span> include a non-empty <code>context</code> field describing why the delegation is happening. This is required for audit trail integrity.</p>
+
+<h4 id="aip-delegation-requirements">4.2 Requirements</h4>
+
+<ul><li>The <code>context</code> field <span class="rfc2119">MUST</span> be a non-empty string.</li>
+<li>Verifiers <span class="rfc2119">MUST</span> reject tokens where any delegation block has a missing or empty <code>context</code> field.</li>
+<li>The <code>context</code> field <span class="rfc2119">SHOULD</span> be a human-readable description of the delegation purpose (e.g., <code>"research subtask for query X"</code>, <code>"spawned for search subtask"</code>).</li>
+<li>The <code>context</code> field is not constrained to any particular format, but it <span class="rfc2119">MUST NOT</span> be an empty string or whitespace-only string.</li>
+
+</ul><hr/>
+
+<h3 id="aip-delegation-ephemeral-agent-grants">5. Ephemeral Agent Grants</h3>
+
+<h4 id="aip-delegation-overview">5.1 Overview</h4>
+
+<p>When an agent spawns a short-lived sub-agent, it can issue an ephemeral grant using a self-certifying (<code>aip:key:</code>) identity for the sub-agent.</p>
+
+<h4 id="aip-delegation-grant-flow">5.2 Grant Flow</h4>
+
+<ul><li>Parent agent generates an Ed25519 keypair for the sub-agent.</li>
+<li>Sub-agent's identity is <code>aip:key:ed25519:&lt;pubkey&gt;</code> (self-certifying, no DNS needed).</li>
+<li>Parent appends a delegation block with scoped capabilities and short TTL.</li>
+<li>Sub-agent uses the token for its work.</li>
+<li>Token auto-expires.</li>
+
+</ul><h4 id="aip-delegation-ephemeral-grant-block">5.3 Ephemeral Grant Block</h4>
+
+<pre><code>
+Block N (Ephemeral Grant) -- signed by parent
+  delegate: aip:key:ed25519:z6Mkf...
+  attenuate: [tool:search, budget:0.10]
+  expires: 2026-03-22T10:05:00Z  (5 minutes)
+  ephemeral: true
+  context: "spawned for search subtask"
+</code></pre>
+
+<h4 id="aip-delegation-requirements">5.4 Requirements</h4>
+
+<ul><li>Ephemeral grants <span class="rfc2119">MUST</span> delegate to an <code>aip:key:</code> identifier.</li>
+<li>Ephemeral grants <span class="rfc2119">SHOULD</span> have short TTLs (5 minutes or less is <span class="rfc2119">RECOMMENDED</span>).</li>
+<li>The <code>ephemeral</code> field <span class="rfc2119">MUST</span> be set to <code>true</code> for ephemeral grants.</li>
+<li>All scope attenuation rules (Section 2) apply equally to ephemeral grants.</li>
+<li>The <code>context</code> field <span class="rfc2119">MUST</span> be non-empty (Section 4).</li>
+<li>The parent agent's identity document <code>delegation.allow_ephemeral_grants</code> field, if set to <code>false</code>, <span class="rfc2119">MUST</span> prevent ephemeral grants from being issued.</li>
+
+</ul><hr/>
+
+<h3 id="aip-delegation-key-rotation">6. Key Rotation</h3>
+
+<h4 id="aip-delegation-dns-based-identities-aipweb">6.1 DNS-Based Identities (<code>aip:web:</code>)</h4>
+
+<p>DNS-based identity documents support zero-downtime key rotation through multiple keys with validity windows.</p>
+
+<p><strong>Rotation procedure:</strong></p>
+
+<ul><li>Publish a new key in the identity document with a <code>valid_from</code> timestamp set to the desired activation time.</li>
+<li>Wait for propagation (identity document caches to expire).</li>
+<li>Both old and new keys are valid during the overlap window.</li>
+<li>After the old key's <code>valid_until</code> passes, it is no longer accepted for new token verification.</li>
+<li>Retire the old key by removing it from the identity document.</li>
+
+</ul><p><strong>Requirements:</strong></p>
+
+<ul><li>Identity documents <span class="rfc2119">MAY</span> list multiple keys with overlapping or adjacent validity windows.</li>
+<li>Tokens signed with any currently-valid key (where <code>valid_from</code> &lt;= now &lt;= <code>valid_until</code>) <span class="rfc2119">MUST</span> be accepted.</li>
+<li>The recommended rotation period is 90 days.</li>
+<li>Implementations <span class="rfc2119">SHOULD</span> cache identity documents with a maximum TTL of 5 minutes to ensure timely key rotation propagation.</li>
+
+</ul><h4 id="aip-delegation-self-certifying-identities-aipkey">6.2 Self-Certifying Identities (<code>aip:key:</code>)</h4>
+
+<p>For self-certifying identities, the key IS the identity. Rotation produces a new identity.</p>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Key rotation for <code>aip:key:</code> identifiers <span class="rfc2119">MUST</span> be treated as identity replacement, not key update.</li>
+<li>This is acceptable because <code>aip:key:</code> identifiers are intended for ephemeral agents.</li>
+<li>Existing tokens signed by the old key remain valid until their expiration.</li>
+
+</ul><hr/>
+
+<h3 id="aip-delegation-revocation">7. Revocation</h3>
+
+<h4 id="aip-delegation-general-stance">7.1 General Stance</h4>
+
+<p>AIP prefers short-lived tokens over revocation infrastructure. This reduces operational complexity and avoids the latency and availability problems inherent in revocation checking.</p>
+
+<h4 id="aip-delegation-compact-mode">7.2 Compact Mode</h4>
+
+<p>Compact mode tokens <span class="rfc2119">SHOULD</span> have a lifetime of less than 1 hour. With short-lived tokens, revocation is generally unnecessary: the token will expire before revocation infrastructure could propagate the revocation.</p>
+
+<h4 id="aip-delegation-chained-mode">7.3 Chained Mode</h4>
+
+<p>Chained mode supports two revocation mechanisms:</p>
+
+<p><strong>Key revocation:</strong></p>
+<ul><li>Remove the key from the identity document.</li>
+<li>All tokens signed by that key become unverifiable on next identity document fetch.</li>
+<li>Verifiers <span class="rfc2119">SHOULD</span> cache identity documents with a maximum TTL of 5 minutes.</li>
+
+</ul><p><strong>Token-specific revocation (optional):</strong></p>
+<ul><li>The identity document <span class="rfc2119">MAY</span> include a <code>revocation</code> object with an HTTPS endpoint and method.</li>
+<li>The only supported method in v1 is <code>"crl"</code> (Certificate Revocation List).</li>
+<li>The CRL format is deferred to v2. Implementations <span class="rfc2119">SHOULD NOT</span> depend on CRL availability in v1.</li>
+
+</ul><h4 id="aip-delegation-requirements">7.4 Requirements</h4>
+
+<ul><li>Compact mode tokens <span class="rfc2119">SHOULD</span> have lifetimes of less than 1 hour.</li>
+<li>Verifiers <span class="rfc2119">SHOULD</span> cache identity documents with a maximum TTL of 5 minutes to enable timely key revocation.</li>
+<li>Token-specific revocation via CRL is <span class="rfc2119">OPTIONAL</span> in v1.</li>
+<li>The CRL format definition is deferred to v2. The <code>revocation</code> field in identity documents is reserved for forward compatibility.</li></ul>
+</section>
+<section id="aip-provenance">
+<h2>AIP Provenance Bridge and Audit</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-provenance-introduction">1. Introduction</h3>
+
+<p>This document defines AIP completion blocks, the trust model for completion data, integration with the Layered Disclosure Protocol (LDP), governance framework mapping, and the audit token concept.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-provenance-completion-blocks">2. Completion Blocks</h3>
+
+<h4 id="aip-provenance-overview">2.1 Overview</h4>
+
+<p>When work finishes, the executing agent appends a completion block to the token chain. Completion blocks bind the outcome of work back to the authorization chain that permitted it.</p>
+
+<h4 id="aip-provenance-completion-block-structure">2.2 Completion Block Structure</h4>
+
+<p>A completion block contains 7 fields:</p>
+
+<pre><code>
+Block N (Completion) -- signed by executing agent
+  status: "completed" | "failed" | "partial"
+  result_hash: "sha256:e3b0c44298fc..."
+  verification_status: "tool_verified"
+  tokens_used: 1200
+  cost_usd: 0.03
+  duration_ms: 4500
+  ldp_provenance_id: "ldp:provenance:uuid"  (optional)
+</code></pre>
+
+<h4 id="aip-provenance-field-definitions">2.3 Field Definitions</h4>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>status</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>Outcome of the work. <span class="rfc2119">MUST</span> be one of <code>"completed"</code>, <code>"failed"</code>, or <code>"partial"</code>.</td></tr>
+<tr><td><code>result_hash</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>SHA-256 hash of the result, formatted as <code>"sha256:&lt;hex-digest&gt;"</code>. Binds the token to a specific output.</td></tr>
+<tr><td><code>verification_status</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>How the result was verified. See Section 3 for trust model values.</td></tr>
+<tr><td><code>tokens_used</code></td><td>integer</td><td><span class="rfc2119">OPTIONAL</span></td><td>Number of LLM tokens consumed during execution.</td></tr>
+<tr><td><code>cost_usd</code></td><td>number</td><td><span class="rfc2119">OPTIONAL</span></td><td>Actual cost incurred in USD. For audit, not enforcement (see AIP Tokens budget semantics).</td></tr>
+<tr><td><code>duration_ms</code></td><td>integer</td><td><span class="rfc2119">OPTIONAL</span></td><td>Wall-clock execution time in milliseconds.</td></tr>
+<tr><td><code>ldp_provenance_id</code></td><td>string</td><td><span class="rfc2119">OPTIONAL</span></td><td>Back-link to an LDP provenance record. See Section 4 for LDP integration.</td></tr>
+</table>
+
+<h4 id="aip-provenance-when-completion-blocks-are-required">2.4 When Completion Blocks Are Required</h4>
+
+<p>Completion blocks are <span class="rfc2119">OPTIONAL</span> by default. They are <span class="rfc2119">REQUIRED</span> only when:</p>
+
+<ul><li>The delegation policy includes <code>require_provenance: true</code>.</li>
+<li>The token will be used as audit evidence.</li>
+<li>LDP provenance bridging is active (see Section 4).</li>
+
+</ul><h4 id="aip-provenance-requirements">2.5 Requirements</h4>
+
+<ul><li>Completion blocks <span class="rfc2119">MUST</span> be signed by the executing agent (the agent that performed the work).</li>
+<li>The <code>status</code> field <span class="rfc2119">MUST</span> be one of the three defined values: <code>"completed"</code>, <code>"failed"</code>, or <code>"partial"</code>.</li>
+<li>The <code>result_hash</code> <span class="rfc2119">MUST</span> use SHA-256 and the format <code>"sha256:&lt;hex-digest&gt;"</code>.</li>
+<li>The completion block <span class="rfc2119">MUST</span> be appended as the final block in the token chain.</li>
+<li>Only one completion block is permitted per token chain (excluding verification and attestation blocks defined in Section 3).</li>
+
+</ul><hr/>
+
+<h3 id="aip-provenance-trust-model">3. Trust Model</h3>
+
+<h4 id="aip-provenance-overview">3.1 Overview</h4>
+
+<p>Completion blocks are signed by the executing agent -- the party whose work is being reported. This means completion blocks are <strong>self-reported claims</strong>, not independently verified proofs. Their trust properties:</p>
+
+<ul><li><strong>Tamper-evident:</strong> The block is cryptographically signed. It cannot be modified after creation without detection.</li>
+<li><strong>Attribution-bound:</strong> The signature proves which agent made the claim. A fraudulent claim is attributable.</li>
+<li><strong>Not independently verified (by default):</strong> The executing agent could misrepresent <code>result_hash</code> or <code>cost_usd</code>.</li>
+
+</ul><h4 id="aip-provenance-trust-levels">3.2 Trust Levels</h4>
+
+<p>AIP defines three trust escalation levels for completion blocks:</p>
+
+<h5 id="aip-provenance-level-1-self-reported-default">Level 1: Self-Reported (Default)</h5>
+
+<p>The agent reports its own results. No independent verification.</p>
+
+<ul><li><code>verification_status</code>: implementation-defined (e.g., <code>"self_reported"</code> or <code>"unverified"</code>)</li>
+<li>Sufficient for internal, trusted environments.</li>
+<li>No additional blocks required.</li>
+
+</ul><h5 id="aip-provenance-level-2-counter-signed">Level 2: Counter-Signed</h5>
+
+<p>The delegator (parent agent) independently verifies the result and appends a counter-signature block.</p>
+
+<p>The counter-signature adds one block after the completion block:</p>
+
+<pre><code>
+Block N+1 (Verification) -- signed by delegator
+  verified: true
+  verifier: &lt;delegator_aip_id&gt;
+</code></pre>
+
+<ul><li><code>verification_status</code> in the completion block: <code>"tool_verified"</code> or equivalent.</li>
+<li>The delegator has independently checked the result.</li>
+
+</ul><h5 id="aip-provenance-level-3-third-party-attested">Level 3: Third-Party Attested</h5>
+
+<p>An external verifier (LDP peer verification, human reviewer, or audit service) signs an attestation block.</p>
+
+<ul><li>The <code>verification_status</code> field maps to LDP's verification enum when LDP integration is active.</li>
+<li><code>"peer_verified"</code>: verified by an LDP peer.</li>
+<li><code>"human_verified"</code>: verified by a human reviewer.</li>
+
+</ul><h4 id="aip-provenance-requirements">3.3 Requirements</h4>
+
+<ul><li>Consumers of completion blocks <span class="rfc2119">SHOULD</span> check the <code>verification_status</code> field and weight their trust accordingly.</li>
+<li><code>"tool_verified"</code> or <code>"peer_verified"</code> completion blocks carry more weight than unverified self-reports.</li>
+<li>Counter-signature blocks (Level 2) <span class="rfc2119">MUST</span> be signed by the delegator identified in the preceding delegation block.</li>
+<li>Third-party attestation blocks (Level 3) <span class="rfc2119">MUST</span> include the attester's AIP identifier.</li>
+
+</ul><hr/>
+
+<h3 id="aip-provenance-ldp-integration">4. LDP Integration</h3>
+
+<h4 id="aip-provenance-overview">4.1 Overview</h4>
+
+<p>When both AIP and the Layered Disclosure Protocol (LDP) are in use, they provide complementary guarantees:</p>
+
+<ul><li><strong>AIP:</strong> Authorization chain -- who was authorized, through which agents, with what scope.</li>
+<li><strong>LDP:</strong> Provenance and quality evidence -- what was produced, how it was verified, what metadata accompanies it.</li>
+
+</ul><p>Neither protocol depends on the other. They are linked when both are present.</p>
+
+<h4 id="aip-provenance-bidirectional-linking">4.2 Bidirectional Linking</h4>
+
+<p><strong>AIP to LDP (forward link):</strong></p>
+
+<p>The LDP provenance record includes an <code>aip_token_hash</code> field, binding "what was produced" to "who was authorized to produce it."</p>
+
+<p><strong>LDP to AIP (back-link):</strong></p>
+
+<p>The AIP completion block includes an <code>ldp_provenance_id</code> field, linking the authorization chain back to the full provenance record.</p>
+
+<p>Together, the forward and back links create a bidirectional binding between authorization (AIP) and provenance (LDP).</p>
+
+<h4 id="aip-provenance-requirements">4.3 Requirements</h4>
+
+<ul><li>When LDP integration is active, the AIP completion block <span class="rfc2119">SHOULD</span> include the <code>ldp_provenance_id</code> field.</li>
+<li>When LDP integration is active, the LDP provenance record <span class="rfc2119">SHOULD</span> include the <code>aip_token_hash</code> field.</li>
+<li>The <code>aip_token_hash</code> in LDP records <span class="rfc2119">MUST</span> be the SHA-256 hash of the serialized AIP token (before the completion block is appended).</li>
+<li>The <code>ldp_provenance_id</code> <span class="rfc2119">MUST</span> be a valid LDP provenance record identifier.</li>
+<li>Implementations <span class="rfc2119">MUST NOT</span> require LDP to be present for AIP to function. LDP integration is <span class="rfc2119">OPTIONAL</span>.</li>
+
+</ul><hr/>
+
+<h3 id="aip-provenance-governance-framework-mapping">5. Governance Framework Mapping</h3>
+
+<p>AIP directly addresses common governance requirements for AI agent systems:</p>
+
+<table>
+<tr><th>Governance Requirement</th><th>AIP Implementation</th></tr>
+<tr><td>Each agent uses own service account and authentication</td><td>Each agent has its own AIP identity and keypair.</td></tr>
+<tr><td>Cross-agent action validation</td><td>Receiving agent verifies the full AIP token chain.</td></tr>
+<tr><td>No privilege escalation</td><td>Scope attenuation enforced cryptographically at each delegation hop.</td></tr>
+<tr><td>Principle of least privilege</td><td>Policy profiles constrain capabilities per delegation.</td></tr>
+<tr><td>Audit trail with correlation IDs</td><td>Token chain traces the full path from human to outcome.</td></tr>
+<tr><td>Incident forensics attribution</td><td>Completion blocks and provenance enable full reconstruction.</td></tr>
+</table>
+
+<hr/>
+
+<h3 id="aip-provenance-audit-token">6. Audit Token</h3>
+
+<h4 id="aip-provenance-concept">6.1 Concept</h4>
+
+<p>A completed chained token (with a completion block appended) is a self-contained audit artifact. It answers five key questions without requiring any external database:</p>
+
+<pre><code>
+Who authorized?     -&gt; Block 0 (root identity + initial scope)
+Through whom?       -&gt; Blocks 1..N-1 (delegation chain with context)
+What constraints?   -&gt; Datalog policies in each block
+What happened?      -&gt; Completion block (result hash, cost, duration)
+Was it verified?    -&gt; verification_status + ldp_provenance_id link
+</code></pre>
+
+<h4 id="aip-provenance-properties">6.2 Properties</h4>
+
+<ul><li><strong>Self-contained:</strong> No central audit database is needed. The token itself is the evidence.</li>
+<li><strong>Tamper-evident:</strong> Every block is cryptographically signed. Modification of any block invalidates the chain.</li>
+<li><strong>Non-repudiable:</strong> Each signer's identity is bound to their block. Signers cannot deny their participation.</li>
+<li><strong>Verifiable offline:</strong> Given the public keys (from identity documents), the entire chain can be verified without network access to any central authority.</li>
+
+</ul><h4 id="aip-provenance-requirements">6.3 Requirements</h4>
+
+<ul><li>Audit tokens <span class="rfc2119">MUST</span> be complete chained mode tokens with at least Block 0 (authority) and one completion block.</li>
+<li>All blocks in an audit token <span class="rfc2119">MUST</span> pass signature verification.</li>
+<li>All delegation blocks <span class="rfc2119">MUST</span> have non-empty <code>context</code> fields.</li>
+<li>Implementations <span class="rfc2119">SHOULD</span> provide tooling to render audit tokens in a human-readable format for forensic review.</li>
+<li>Audit tokens <span class="rfc2119">SHOULD</span> be retained according to the organization's data retention policies.</li></ul>
+</section>
+<section id="aip-bindings-mcp">
+<h2>AIP Binding: Model Context Protocol (MCP)</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-bindings-mcp-introduction">1. Introduction</h3>
+
+<p>This document defines how AIP tokens are transported, verified, and enforced within the Model Context Protocol (MCP). It covers the token header, server-side verification steps, error response format, error codes, and the <code>require_aip</code> server capability.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-bindings-mcp-token-transport">2. Token Transport</h3>
+
+<h4 id="aip-bindings-mcp-x-aip-token-header">2.1 X-AIP-Token Header</h4>
+
+<p>AIP tokens <span class="rfc2119">MUST</span> be transmitted in the <code>X-AIP-Token</code> HTTP header on MCP tool call requests.</p>
+
+<pre><code>
+POST /mcp/v1/tools/search
+X-AIP-Token: &lt;compact or chained token&gt;
+Content-Type: application/json
+
+{"query": "latest research on agent identity"}
+</code></pre>
+
+<h4 id="aip-bindings-mcp-token-by-reference">2.2 Token-by-Reference</h4>
+
+<p>For large tokens (exceeding 4KB), the client <span class="rfc2119">MAY</span> use the <code>X-AIP-Token-Ref</code> header instead:</p>
+
+<pre><code>
+X-AIP-Token-Ref: https://issuer.example/.well-known/aip/tokens/&lt;token-id&gt;
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Clients <span class="rfc2119">MUST</span> send the AIP token in the <code>X-AIP-Token</code> header, or a reference URL in the <code>X-AIP-Token-Ref</code> header.</li>
+<li>If both <code>X-AIP-Token</code> and <code>X-AIP-Token-Ref</code> are present, the server <span class="rfc2119">MUST</span> use <code>X-AIP-Token</code> and ignore <code>X-AIP-Token-Ref</code>.</li>
+<li>The <code>X-AIP-Token-Ref</code> URL <span class="rfc2119">MUST</span> use HTTPS.</li>
+<li>Servers <span class="rfc2119">MUST</span> fetch and fully verify the token from the reference URL before processing the request.</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-mcp-server-side-verification">3. Server-Side Verification</h3>
+
+<p>When an MCP server receives a request with an AIP token, it <span class="rfc2119">MUST</span> perform the following 5-step verification:</p>
+
+<h4 id="aip-bindings-mcp-step-1-extract-token">Step 1: Extract Token</h4>
+
+<p>Extract the token from the <code>X-AIP-Token</code> header. If the header is absent, check for <code>X-AIP-Token-Ref</code> and fetch the full token from the referenced URL.</p>
+
+<p>If neither header is present and the server has <code>require_aip: true</code>, return error <code>aip_token_missing</code>.</p>
+
+<h4 id="aip-bindings-mcp-step-2-verify-signatures">Step 2: Verify Signatures</h4>
+
+<p>Verify the token's cryptographic signature(s) against the identity document resolved from the issuer identity (<code>iss</code> claim in compact mode, Block 0 <code>identity</code> fact in chained mode).</p>
+
+<ul><li>For compact mode: verify the single JWT signature against the issuer's public key.</li>
+<li>For chained mode: verify the signature on every block against the respective signer's public key.</li>
+
+</ul><p>If signature verification fails, return error <code>aip_signature_invalid</code>.</p>
+<p>If the issuer's identity document cannot be resolved, return error <code>aip_identity_unresolvable</code>.</p>
+
+<h4 id="aip-bindings-mcp-step-3-check-policy">Step 3: Check Policy</h4>
+
+<p>Determine whether the token authorizes the requested tool call:</p>
+
+<ul><li>Check that the requested tool is included in the token's <code>scope</code> (compact) or <code>right</code> facts (chained).</li>
+<li>If the token does not authorize the operation, return error <code>aip_scope_insufficient</code>.</li>
+
+</ul><h4 id="aip-bindings-mcp-step-4-check-chain-constraints-chained-mode">Step 4: Check Chain Constraints (Chained Mode)</h4>
+
+<p>For chained mode tokens, perform additional checks at each block in the chain:</p>
+
+<ul><li><strong>Delegation depth:</strong> Verify the chain does not exceed <code>max_depth</code>. If exceeded, return error <code>aip_depth_exceeded</code>.</li>
+<li><strong>Budget ceiling:</strong> Verify the declared budget is non-negative. If the budget is insufficient for the declared operation cost, return error <code>aip_budget_exceeded</code>.</li>
+<li><strong>Expiry:</strong> Verify that no block in the chain has expired. If any block has expired, return error <code>aip_token_expired</code>.</li>
+<li><strong>Scope attenuation:</strong> Verify that each delegation block's capabilities are a subset of its parent block.</li>
+<li><strong>Context:</strong> Verify that each delegation block has a non-empty <code>context</code> field.</li>
+<li><strong>Key revocation:</strong> If the identity document includes a revocation endpoint, check whether any signing key has been revoked. If revoked, return error <code>aip_key_revoked</code>.</li>
+
+</ul><h4 id="aip-bindings-mcp-step-5-inject-verified-identity">Step 5: Inject Verified Identity</h4>
+
+<p>Inject the verified identity information into the request context, making it available to the tool implementation. The tool implementation <span class="rfc2119">MAY</span> use the identity for authorization decisions, logging, or audit.</p>
+
+<hr/>
+
+<h3 id="aip-bindings-mcp-error-responses">4. Error Responses</h3>
+
+<h4 id="aip-bindings-mcp-error-format">4.1 Error Format</h4>
+
+<p>When AIP verification fails, MCP servers <span class="rfc2119">MUST</span> return a structured error response:</p>
+
+<pre><code class="lang-json">
+{
+  "error": {
+    "code": "aip_&lt;error_type&gt;",
+    "message": "Human-readable description"
+  }
+}
+</code></pre>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>The <code>code</code> field <span class="rfc2119">MUST</span> be one of the defined AIP error codes (Section 4.2).</li>
+<li>The <code>message</code> field <span class="rfc2119">MUST</span> contain a human-readable description of the error.</li>
+<li>The <code>message</code> field <span class="rfc2119">SHOULD</span> provide enough detail for debugging without leaking sensitive information.</li>
+
+</ul><h4 id="aip-bindings-mcp-error-codes">4.2 Error Codes</h4>
+
+<p>The following 9 error codes are defined:</p>
+
+<table>
+<tr><th>Error Code</th><th>HTTP Status</th><th>Category</th><th>Description</th></tr>
+<tr><td><code>aip_token_missing</code></td><td>401</td><td>Authentication</td><td>No token provided and server requires AIP.</td></tr>
+<tr><td><code>aip_token_malformed</code></td><td>401</td><td>Authentication</td><td>Token cannot be parsed (invalid JWT, invalid Biscuit bytes).</td></tr>
+<tr><td><code>aip_signature_invalid</code></td><td>401</td><td>Authentication</td><td>Signature verification failed against the resolved identity document.</td></tr>
+<tr><td><code>aip_identity_unresolvable</code></td><td>401</td><td>Authentication</td><td>Cannot resolve the issuer's identity document (DNS failure, HTTP error, invalid document).</td></tr>
+<tr><td><code>aip_token_expired</code></td><td>401</td><td>Authentication</td><td>The token or any block in the chain has expired.</td></tr>
+<tr><td><code>aip_scope_insufficient</code></td><td>403</td><td>Authorization</td><td>Token does not authorize the requested operation.</td></tr>
+<tr><td><code>aip_budget_exceeded</code></td><td>403</td><td>Authorization</td><td>Declared budget ceiling is insufficient for the operation.</td></tr>
+<tr><td><code>aip_depth_exceeded</code></td><td>403</td><td>Authorization</td><td>Delegation chain exceeds the declared <code>max_depth</code>.</td></tr>
+<tr><td><code>aip_key_revoked</code></td><td>401</td><td>Authentication</td><td>A signing key in the chain has been revoked.</td></tr>
+</table>
+
+<h4 id="aip-bindings-mcp-http-status-mapping">4.3 HTTP Status Mapping</h4>
+
+<ul><li>HTTP 401 (Unauthorized) <span class="rfc2119">MUST</span> be used for identity and authentication failures: <code>aip_token_missing</code>, <code>aip_token_malformed</code>, <code>aip_signature_invalid</code>, <code>aip_identity_unresolvable</code>, <code>aip_token_expired</code>, <code>aip_key_revoked</code>.</li>
+<li>HTTP 403 (Forbidden) <span class="rfc2119">MUST</span> be used for authorization and scope failures: <code>aip_scope_insufficient</code>, <code>aip_budget_exceeded</code>, <code>aip_depth_exceeded</code>.</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-mcp-server-capability-requireaip">5. Server Capability: <code>require_aip</code></h3>
+
+<h4 id="aip-bindings-mcp-overview">5.1 Overview</h4>
+
+<p>MCP servers <span class="rfc2119">MAY</span> declare AIP support and requirements in their identity document.</p>
+
+<h4 id="aip-bindings-mcp-identity-document-extension">5.2 Identity Document Extension</h4>
+
+<pre><code class="lang-json">
+{
+  "aip": "1.0",
+  "id": "aip:web:example.com/tools/search-api",
+  "public_keys": [{"id": "key-1", "type": "Ed25519", "public_key_multibase": "z6Mk..."}],
+  "protocols": {
+    "mcp": {
+      "require_aip": true,
+      "minimum_policy_profile": "simple"
+    }
+  },
+  "document_signature": "&lt;signature&gt;"
+}
+</code></pre>
+
+<h4 id="aip-bindings-mcp-fields">5.3 Fields</h4>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>require_aip</code></td><td>boolean</td><td>If <code>true</code>, the server rejects anonymous calls (calls without a valid AIP token). Default is <code>false</code>.</td></tr>
+<tr><td><code>minimum_policy_profile</code></td><td>string</td><td>Minimum policy profile required for chained mode tokens. One of <code>"simple"</code>, <code>"standard"</code>, <code>"advanced"</code>. <span class="rfc2119">OPTIONAL</span>.</td></tr>
+</table>
+
+<h4 id="aip-bindings-mcp-requirements">5.4 Requirements</h4>
+
+<ul><li>When <code>require_aip</code> is <code>true</code>, the server <span class="rfc2119">MUST</span> return error <code>aip_token_missing</code> (HTTP 401) for any request that does not include a valid AIP token.</li>
+<li>When <code>require_aip</code> is <code>false</code> or absent, the server <span class="rfc2119">MAY</span> accept anonymous requests but <span class="rfc2119">SHOULD</span> still verify AIP tokens when present.</li>
+<li>When <code>minimum_policy_profile</code> is set, chained mode tokens <span class="rfc2119">MUST</span> include policies at or above the specified profile level. Simple &lt; Standard &lt; Advanced.</li></ul>
+</section>
+<section id="aip-bindings-a2a">
+<h2>AIP Binding: Agent-to-Agent Protocol (A2A)</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-bindings-a2a-introduction">1. Introduction</h3>
+
+<p>This document defines how AIP tokens are transported, verified, and enforced within the Agent-to-Agent (A2A) protocol. It covers the agent card extension, token metadata field, and the 6-step verification flow.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-bindings-a2a-agent-card-extension-aipidentity">2. Agent Card Extension: <code>aip_identity</code></h3>
+
+<h4 id="aip-bindings-a2a-overview">2.1 Overview</h4>
+
+<p>A2A agents that support AIP <span class="rfc2119">MUST</span> declare their AIP identity in their agent card using the <code>aip_identity</code> extension field.</p>
+
+<h4 id="aip-bindings-a2a-format">2.2 Format</h4>
+
+<pre><code class="lang-json">
+{
+  "name": "Research Analyst",
+  "skills": ["..."],
+  "aip_identity": {
+    "id": "aip:web:jamjet.dev/agents/research-analyst",
+    "document_url": "https://jamjet.dev/.well-known/aip/agents/research-analyst.json"
+  }
+}
+</code></pre>
+
+<h4 id="aip-bindings-a2a-field-definitions">2.3 Field Definitions</h4>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>aip_identity</code></td><td>object</td><td><span class="rfc2119">REQUIRED</span> (if AIP-enabled)</td><td>AIP identity extension in the agent card.</td></tr>
+<tr><td><code>aip_identity.id</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span></td><td>The agent's AIP identifier. <span class="rfc2119">MUST</span> be a valid AIP identifier as defined in the AIP Core specification.</td></tr>
+<tr><td><code>aip_identity.document_url</code></td><td>string</td><td><span class="rfc2119">REQUIRED</span> for <code>aip:web:</code> identifiers</td><td>HTTPS URL pointing to the agent's AIP identity document.</td></tr>
+</table>
+
+<h4 id="aip-bindings-a2a-requirements">2.4 Requirements</h4>
+
+<ul><li>A2A agents that support AIP <span class="rfc2119">MUST</span> include the <code>aip_identity</code> field in their agent card.</li>
+<li>The <code>aip_identity.id</code> <span class="rfc2119">MUST</span> be a valid AIP identifier.</li>
+<li>For <code>aip:web:</code> identifiers, <code>aip_identity.document_url</code> <span class="rfc2119">MUST</span> be provided and <span class="rfc2119">MUST</span> use HTTPS.</li>
+<li>For <code>aip:key:</code> identifiers, <code>aip_identity.document_url</code> is <span class="rfc2119">OPTIONAL</span> (the public key is embedded in the identifier itself).</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-a2a-token-transport-aiptoken-metadata-field">3. Token Transport: <code>aip_token</code> Metadata Field</h3>
+
+<h4 id="aip-bindings-a2a-overview">3.1 Overview</h4>
+
+<p>AIP tokens are transmitted in A2A task submissions via the <code>metadata.aip_token</code> field.</p>
+
+<h4 id="aip-bindings-a2a-format">3.2 Format</h4>
+
+<pre><code class="lang-json">
+{
+  "jsonrpc": "2.0",
+  "method": "tasks/send",
+  "params": {
+    "task_id": "uuid",
+    "message": {
+      "role": "user",
+      "parts": [{"text": "Research X"}]
+    },
+    "metadata": {
+      "aip_token": "&lt;chained token with delegation block appended&gt;"
+    }
+  }
+}
+</code></pre>
+
+<h4 id="aip-bindings-a2a-requirements">3.3 Requirements</h4>
+
+<ul><li>The AIP token <span class="rfc2119">MUST</span> be placed in the <code>metadata.aip_token</code> field of the A2A task submission.</li>
+<li>The token <span class="rfc2119">SHOULD</span> be a chained mode token with a delegation block appended for the receiving agent.</li>
+<li>Compact mode tokens <span class="rfc2119">MAY</span> be used for single-hop A2A interactions.</li>
+<li>The <code>metadata</code> object <span class="rfc2119">MUST</span> be preserved across A2A task forwarding.</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-a2a-verification-flow">4. Verification Flow</h3>
+
+<p>When an A2A agent receives a task with an AIP token, it <span class="rfc2119">MUST</span> perform the following 6-step verification flow:</p>
+
+<h4 id="aip-bindings-a2a-step-1-discover-agent-card">Step 1: Discover Agent Card</h4>
+
+<p>Agent A discovers Agent B's agent card, which includes the <code>aip_identity</code> extension.</p>
+
+<p>If the agent card does not include <code>aip_identity</code> and the receiving agent requires AIP, the task <span class="rfc2119">MUST</span> be rejected.</p>
+
+<h4 id="aip-bindings-a2a-step-2-resolve-identity-document">Step 2: Resolve Identity Document</h4>
+
+<p>Agent A resolves Agent B's AIP identity document using the <code>document_url</code> from the agent card (for <code>aip:web:</code> identifiers) or constructs it from the key (for <code>aip:key:</code> identifiers).</p>
+
+<p>Agent A <span class="rfc2119">MUST</span> verify the identity document's <code>document_signature</code> and confirm the document has not expired.</p>
+
+<h4 id="aip-bindings-a2a-step-3-append-delegation-block">Step 3: Append Delegation Block</h4>
+
+<p>Agent A appends a delegation block to its token, attenuating scope for Agent B's task:</p>
+
+<ul><li>The delegation block <span class="rfc2119">MUST</span> contain a <code>delegate</code> fact with Agent B's AIP identifier.</li>
+<li>The delegation block <span class="rfc2119">MUST</span> attenuate capabilities to only those needed for the delegated task.</li>
+<li>The delegation block <span class="rfc2119">MUST</span> include a non-empty <code>context</code> field.</li>
+<li>The delegation block <span class="rfc2119">MUST</span> be signed by Agent A's private key.</li>
+
+</ul><h4 id="aip-bindings-a2a-step-4-send-task-with-token">Step 4: Send Task with Token</h4>
+
+<p>Agent A sends the task to Agent B with the token (including the new delegation block) in the <code>metadata.aip_token</code> field.</p>
+
+<h4 id="aip-bindings-a2a-step-5-verify-full-chain">Step 5: Verify Full Chain</h4>
+
+<p>Agent B verifies the full token chain:</p>
+
+<ul><li><strong>Root authority:</strong> Verify Block 0 signature and resolve the root identity.</li>
+<li><strong>Delegation chain:</strong> For each delegation block (Block 1..N), verify:</li>
+<li>The block's signature against the delegator's public key.</li>
+<li>Scope attenuation (capabilities are a subset of the parent block).</li>
+<li>The <code>context</code> field is non-empty.</li>
+<li>The delegation depth does not exceed <code>max_depth</code>.</li>
+<li><strong>Final delegation:</strong> Verify the last delegation block delegates to Agent B's own AIP identifier.</li>
+<li><strong>Expiry:</strong> Verify no block in the chain has expired.</li>
+<li><strong>Budget:</strong> Verify the declared budget is non-negative.</li>
+
+</ul><p>If any verification step fails, the task <span class="rfc2119">MUST</span> be rejected with an appropriate error.</p>
+
+<h4 id="aip-bindings-a2a-step-6-further-delegation-optional">Step 6: Further Delegation (Optional)</h4>
+
+<p>Agent B <span class="rfc2119">MAY</span> further delegate by appending another delegation block if <code>max_depth</code> allows. All scope attenuation rules apply. If the current chain depth equals <code>max_depth</code>, further delegation <span class="rfc2119">MUST NOT</span> be permitted.</p>
+
+<hr/>
+
+<h3 id="aip-bindings-a2a-error-handling">5. Error Handling</h3>
+
+<p>A2A agents <span class="rfc2119">SHOULD</span> use the same error codes defined in the AIP MCP Binding specification (Section 4.2 of <code>aip-bindings-mcp.md</code>). Errors <span class="rfc2119">SHOULD</span> be returned as A2A task error responses with the AIP error code included in the error metadata.</p>
+
+<hr/>
+
+<h3 id="aip-bindings-a2a-mutual-authentication">6. Mutual Authentication</h3>
+
+<p>A2A interactions support optional mutual authentication:</p>
+
+<ul><li><strong>Caller proves identity:</strong> Agent A includes an AIP token in the task submission.</li>
+<li><strong>Receiver proves identity:</strong> Agent A resolves Agent B's identity document before sending and verifies TLS certificate matches the domain in Agent B's <code>aip:web:</code> identifier.</li>
+
+</ul><p>Mutual authentication for self-certifying identities (<code>aip:key:</code>) is deferred to v2 (requires a challenge-response sub-protocol).</p>
+
+<p><strong>Requirements:</strong></p>
+
+<ul><li>Caller-only authentication is the default.</li>
+<li>Mutual authentication is <span class="rfc2119">OPTIONAL</span> and opt-in for high-security scenarios.</li>
+<li>When mutual authentication is used with <code>aip:web:</code> identifiers, the caller <span class="rfc2119">MUST</span> verify the TLS certificate matches the domain before sending the task.</li></ul>
+</section>
+<section id="aip-bindings-http">
+<h2>AIP Binding: HTTP / Mutual Authentication</h2>
+
+<p><strong>Version:</strong> 0.1.0-draft</p>
+<p><strong>Status:</strong> Draft</p>
+<p><strong>Date:</strong> 2026-03-22</p>
+
+<hr/>
+
+<h3 id="aip-bindings-http-introduction">1. Introduction</h3>
+
+<p>This document defines the generic HTTP binding for AIP tokens, including the <code>Authorization: AIP</code> header, mutual authentication, and token-by-reference via the <code>X-AIP-Token-Ref</code> header. This binding applies to any HTTP-based API that is not covered by the MCP or A2A bindings.</p>
+
+<p>The key words "<span class="rfc2119">MUST</span>", "<span class="rfc2119">MUST NOT</span>", "<span class="rfc2119">REQUIRED</span>", "SHALL", "SHALL NOT", "<span class="rfc2119">SHOULD</span>", "<span class="rfc2119">SHOULD NOT</span>", "<span class="rfc2119">RECOMMENDED</span>", "<span class="rfc2119">MAY</span>", and "<span class="rfc2119">OPTIONAL</span>" in this document are to be interpreted as described in <a href="https://www.rfc-editor.org/rfc/rfc2119">RFC 2119</a>.</p>
+
+<hr/>
+
+<h3 id="aip-bindings-http-authorization-header">2. Authorization Header</h3>
+
+<h4 id="aip-bindings-http-format">2.1 Format</h4>
+
+<p>AIP tokens <span class="rfc2119">MUST</span> be transmitted using the standard HTTP <code>Authorization</code> header with the <code>AIP</code> scheme:</p>
+
+<pre><code>
+GET /api/data
+Authorization: AIP &lt;token&gt;
+</code></pre>
+
+<p>The <code>&lt;token&gt;</code> value is the base64url-encoded compact (JWT) or chained (Biscuit) token.</p>
+
+<h4 id="aip-bindings-http-scheme-registration">2.2 Scheme Registration</h4>
+
+<p>The <code>AIP</code> authorization scheme is used to identify AIP tokens in the <code>Authorization</code> header.</p>
+
+<h4 id="aip-bindings-http-compatibility">2.3 Compatibility</h4>
+
+<p>APIs that do not understand the <code>AIP</code> scheme will ignore the <code>Authorization</code> header or return a standard HTTP 401 response. APIs that support AIP can verify caller identity and scope from the token.</p>
+
+<h4 id="aip-bindings-http-requirements">2.4 Requirements</h4>
+
+<ul><li>Clients <span class="rfc2119">MUST</span> use the <code>Authorization: AIP &lt;token&gt;</code> format for generic HTTP API calls.</li>
+<li>The <code>&lt;token&gt;</code> <span class="rfc2119">MUST</span> be a valid AIP token (compact or chained mode).</li>
+<li>Servers that support AIP <span class="rfc2119">MUST</span> recognize the <code>AIP</code> scheme in the <code>Authorization</code> header.</li>
+<li>Servers that do not support AIP <span class="rfc2119">SHOULD</span> ignore the <code>AIP</code> scheme gracefully (standard HTTP behavior).</li>
+<li>The <code>Authorization: AIP</code> header and the <code>X-AIP-Token</code> header (from the MCP binding) carry the same token format. The choice of header depends on the protocol context.</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-http-token-by-reference">3. Token-by-Reference</h3>
+
+<h4 id="aip-bindings-http-x-aip-token-ref-header">3.1 X-AIP-Token-Ref Header</h4>
+
+<p>For tokens that exceed practical inline size limits (4KB recommended threshold), clients <span class="rfc2119">MAY</span> use the <code>X-AIP-Token-Ref</code> header to provide a URL from which the server can fetch the full token:</p>
+
+<pre><code>
+GET /api/data
+Authorization: AIP &lt;token-reference-indicator&gt;
+X-AIP-Token-Ref: https://issuer.example/.well-known/aip/tokens/&lt;token-id&gt;
+</code></pre>
+
+<h4 id="aip-bindings-http-requirements">3.2 Requirements</h4>
+
+<ul><li>The <code>X-AIP-Token-Ref</code> URL <span class="rfc2119">MUST</span> use HTTPS.</li>
+<li>The response at the reference URL <span class="rfc2119">MUST</span> include the full, self-authenticating token (with its complete signature chain).</li>
+<li>No additional trust beyond the token's own cryptographic signatures is required to verify a token fetched by reference.</li>
+<li>If both <code>Authorization: AIP &lt;token&gt;</code> (with an inline token) and <code>X-AIP-Token-Ref</code> are present, the server <span class="rfc2119">MUST</span> use the inline token and ignore the reference.</li>
+<li>Servers <span class="rfc2119">MUST</span> fetch and fully verify the referenced token before processing the request.</li>
+<li>Servers <span class="rfc2119">SHOULD</span> enforce a timeout on reference URL fetches (<span class="rfc2119">RECOMMENDED</span>: 5 seconds).</li>
+<li>Servers <span class="rfc2119">SHOULD</span> reject reference URLs that do not match expected domain patterns to prevent SSRF attacks.</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-http-mutual-authentication">4. Mutual Authentication</h3>
+
+<h4 id="aip-bindings-http-overview">4.1 Overview</h4>
+
+<p>All AIP HTTP bindings support optional mutual authentication, where both the caller and receiver prove their identity.</p>
+
+<h4 id="aip-bindings-http-caller-authentication-default">4.2 Caller Authentication (Default)</h4>
+
+<p>The caller proves identity by including an AIP token in the request. This is the default mode for all AIP-enabled HTTP interactions.</p>
+
+<h4 id="aip-bindings-http-receiver-authentication">4.3 Receiver Authentication</h4>
+
+<p>The caller verifies the receiver's identity before sending the request.</p>
+
+<p><strong>v1: DNS-based TLS only.</strong></p>
+
+<p>For receivers with <code>aip:web:</code> identifiers:</p>
+
+<ul><li>The caller resolves the receiver's AIP identity document.</li>
+<li>The caller verifies the TLS certificate of the receiver's domain matches the domain in the receiver's AIP identifier.</li>
+<li>Standard HTTPS certificate validation provides receiver authentication.</li>
+
+</ul><p>This leverages existing PKI infrastructure. No additional challenge-response protocol is needed for DNS-based identities.</p>
+
+<p><strong>v2 (deferred): Self-certifying mutual authentication.</strong></p>
+
+<p>Mutual authentication for self-certifying identities (<code>aip:key:</code>) requires a challenge-response sub-protocol that is out of scope for v1. This will be defined in a future version of this specification.</p>
+
+<h4 id="aip-bindings-http-requirements">4.4 Requirements</h4>
+
+<ul><li>Caller-only authentication (sending an AIP token) is the default. No additional configuration is required.</li>
+<li>Mutual authentication is <span class="rfc2119">OPTIONAL</span> and opt-in for high-security scenarios.</li>
+<li>In v1, receiver authentication <span class="rfc2119">MUST</span> use DNS-based TLS verification only.</li>
+<li>Implementations <span class="rfc2119">MUST NOT</span> attempt mutual authentication with <code>aip:key:</code> identifiers in v1.</li>
+<li>When mutual authentication is active, the caller <span class="rfc2119">MUST</span> resolve the receiver's identity document and verify the TLS certificate matches the domain BEFORE sending the request.</li>
+
+</ul><hr/>
+
+<h3 id="aip-bindings-http-verification">5. Verification</h3>
+
+<p>HTTP servers that support AIP <span class="rfc2119">SHOULD</span> follow the same 5-step verification process defined in the AIP MCP Binding specification (Section 3 of <code>aip-bindings-mcp.md</code>):</p>
+
+<ul><li>Extract token from <code>Authorization: AIP</code> header (or <code>X-AIP-Token-Ref</code>).</li>
+<li>Verify signature(s) against the resolved identity document.</li>
+<li>Check policy: does the token authorize this operation?</li>
+<li>If chained mode: check delegation depth, budget ceiling, expiry at each block.</li>
+<li>Inject verified identity into request context.</li>
+
+</ul><p>The same error codes and HTTP status mappings defined in the MCP binding (Section 4 of <code>aip-bindings-mcp.md</code>) apply to the generic HTTP binding.</p>
+</section>
+</main>
+</div>
+</body>
+</html>
