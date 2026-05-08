@@ -6,7 +6,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_SCRIPT = REPO_ROOT / "site" / "build_spec.py"
 SPEC_DIR = REPO_ROOT / "spec"
-OUT_FILE = REPO_ROOT / "site" / "spec" / "index.html"
 
 
 def test_build_emits_index_html(tmp_path):
@@ -48,3 +47,13 @@ def test_h2_anchors_use_filename_prefix(tmp_path):
     # H2 inside a section gets a slug prefixed by the file id.
     # spec/aip-bindings-a2a.md has "## 4. Verification Flow" → id="aip-bindings-a2a-verification-flow"
     assert 'id="aip-bindings-a2a-verification-flow"' in html
+
+
+def test_rfc2119_no_double_wrap(tmp_path):
+    out = tmp_path / "index.html"
+    subprocess.run([sys.executable, str(BUILD_SCRIPT), "--out", str(out)], check=True)
+    html = out.read_text()
+    # MUST NOT and SHOULD NOT must wrap as one span, not nested.
+    assert '<span class="rfc2119"><span class="rfc2119">' not in html
+    # And there must be at least one MUST NOT in the spec to make this meaningful.
+    assert '<span class="rfc2119">MUST NOT</span>' in html
