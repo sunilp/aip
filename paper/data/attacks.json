@@ -7,7 +7,7 @@
       "chain_change": "Block 2 adds 'delete' to scopes — parent only has ['read', 'write'].",
       "verification_step": 5,
       "verification_substep": "Scope attenuation",
-      "error_code": "aip_scope_widening",
+      "error_code": "aip_scope_insufficient",
       "explanation": "Each delegation block's scopes MUST be a subset of its parent's scopes. AIP rejects on parse, before any work happens."
     },
     {
