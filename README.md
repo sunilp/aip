@@ -109,7 +109,7 @@ Benchmarked on compact and chained token operations (1000 iterations):
 | Token size (compact) | 356 bytes | 356 bytes |
 | Token growth per hop | +340 bytes | +388 bytes |
 
-End-to-end overhead for a 2-hop delegation: AIP adds ~2.3 ms vs OAuth's ~20 ms (token exchange simulation). 100% rejection rate on unauthorized token operations across 100 attack scenarios. 129 tests passing across both languages.
+End-to-end overhead for a 2-hop delegation: AIP adds ~2.3 ms vs OAuth's ~20 ms (token exchange simulation). 100% rejection rate on unauthorized token operations across 100 attack scenarios. 160+ tests passing across both languages.
 
 Full benchmark code in `paper/benchmarks/`.
 

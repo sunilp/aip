@@ -117,7 +117,7 @@ print(response)  # {'result': 'drafted'}
 <h2>What you can't do</h2>
 <p>Try modifying the example to reproduce these — every one fails:</p>
 <ul>
-<li><strong>Widen scope:</strong> in step 3 set <code>scopes=["write:draft", "delete"]</code>. Researcher's parent scope did not include <code>delete</code>, so the next verifier rejects with <code>aip_scope_widening</code>.</li>
+<li><strong>Widen scope:</strong> in step 3 set <code>scopes=["write:draft", "delete"]</code>. Researcher's parent scope did not include <code>delete</code>, so the next verifier rejects with <code>aip_scope_insufficient</code>.</li>
 <li><strong>Drop context:</strong> set <code>context=""</code>. <code>append_delegation_block</code> raises <code>ValueError</code> immediately (spec §4 step 3).</li>
 <li><strong>Bypass depth:</strong> set <code>max_depth=1</code> in step 1. The third delegation in step 3 raises a depth error before serializing.</li>
 <li><strong>Replay:</strong> let the token expire (set <code>ttl_seconds=1</code>, sleep 2s). The leaf verifier rejects with <code>aip_token_expired</code>.</li>
