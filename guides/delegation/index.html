@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AIP — Multi-hop chained delegation</title>
+<link rel="stylesheet" href="/aip/css/style.css"/>
+<meta name="description" content="Code-first walkthrough of AIP chained delegation. 3 agents, attenuating scope, deny-by-default verification."/>
+<style>
+pre { background:#f5f5f3; border:1px solid var(--border); border-radius:6px; padding:20px 24px; overflow-x:auto; font-size:13.5px; line-height:1.6; margin:24px 0; }
+code { font-family: var(--mono); font-size:0.88em; background:#f5f5f3; padding:2px 6px; border-radius:3px; }
+pre code { background:none; padding:0; }
+.step { margin: 48px 0; padding-top: 32px; border-top: 1px solid var(--border); }
+.step h2 { font-family: var(--serif); font-size: 22px; margin-bottom: 8px; }
+.step .step-num { font-family: var(--mono); color: var(--ink-muted); font-size: 13px; letter-spacing: 0.05em; }
+.callout { background:#fef3c7; border-left:3px solid #d97706; padding:16px 20px; margin:24px 0; }
+</style>
+</head>
+<body>
+
+<header style="padding: 48px 48px 16px; max-width: 880px; margin: 0 auto;">
+<h1 style="font-family: var(--serif); margin:0 0 8px;">Chained Delegation</h1>
+<p style="color: var(--ink-muted); margin:0;">3 agents, 2 hops, attenuating scope. The token chain grows with each delegation; the leaf agent verifies the entire history before accepting the work.</p>
+</header>
+
+<main style="max-width: 880px; margin: 0 auto; padding: 0 48px 96px;">
+
+<section class="step">
+<p class="step-num">SCENARIO</p>
+<h2>The 3-agent chain</h2>
+<p><strong>Orchestrator</strong> holds the root authority. It delegates research to <strong>Researcher</strong>, who in turn delegates writing to <strong>Writer</strong>. Each hop attenuates scope. If anyone in the chain misbehaves, the leaf agent's verification catches it.</p>
+<pre><code>Orchestrator [research:read, write:draft, delete]
+    |--&gt; delegates to Researcher [research:read, write:draft]      (drops `delete`)
+                |--&gt; delegates to Writer [write:draft]              (drops `research:read`)
+</code></pre>
+</section>
+
+<section class="step">
+<p class="step-num">STEP 1</p>
+<h2>Mint the root authority token</h2>
+<pre><code>from aip_core.crypto import KeyPair
+from aip_token.chained import ChainedToken
+
+orchestrator_kp = KeyPair.generate()
+authority = ChainedToken.create_authority(
+    issuer="aip:web:acme.com/orchestrator",
+    scopes=["research:read", "write:draft", "delete"],
+    budget_cents=500,
+    max_depth=3,
+    ttl_seconds=3600,
+    keypair=orchestrator_kp,
+)
+print("depth:", authority.current_depth())  # 0
+</code></pre>
+<p>The authority block is signed by the orchestrator's private key. <code>max_depth=3</code> caps how many delegation hops can be appended. <code>budget_cents=500</code> is the total ceiling for the chain — children may set their own ceilings, but the runtime tracks aggregate spend against this.</p>
+</section>
+
+<section class="step">
+<p class="step-num">STEP 2</p>
+<h2>Delegate to the researcher (chain grows to depth 1)</h2>
+<pre><code>from aip_a2a import append_delegation_block
+
+to_researcher = append_delegation_block(
+    authority,
+    delegator="aip:web:acme.com/orchestrator",
+    delegate="aip:web:acme.com/researcher",
+    scopes=["research:read", "write:draft"],   # subset of parent
+    context="research-task-2026-05-08",        # required, non-empty
+    budget_cents=200,                          # narrower than 500
+)
+print("depth:", to_researcher.current_depth())  # 1
+</code></pre>
+<div class="callout"><strong>About <code>context</code>:</strong> a per-task string that binds the delegation to a specific intent. A token issued for <code>"research-task-1"</code> is not the same authorisation as one for <code>"research-task-2"</code>. Empty context is rejected at delegation time.</div>
+</section>
+
+<section class="step">
+<p class="step-num">STEP 3</p>
+<h2>Researcher delegates to writer (chain grows to depth 2)</h2>
+<pre><code># Researcher receives the chain via metadata.aip_token, verifies it,
+# then attenuates further:
+
+to_writer = append_delegation_block(
+    to_researcher,
+    delegator="aip:web:acme.com/researcher",
+    delegate="aip:web:acme.com/writer",
+    scopes=["write:draft"],          # drops research:read
+    context="draft-summary",
+    budget_cents=50,
+)
+print("depth:", to_writer.current_depth())  # 2
+</code></pre>
+</section>
+
+<section class="step">
+<p class="step-num">STEP 4</p>
+<h2>Writer verifies the full chain — fails closed</h2>
+<pre><code>from aip_a2a import A2AVerifyMiddleware
+
+def writer_handler(body, *, context):
+    # Only runs if the chain is valid end-to-end.
+    return {"result": "drafted"}
+
+mw = A2AVerifyMiddleware(
+    writer_handler,
+    own_aip_id="aip:web:acme.com/writer",
+    root_public_key_bytes=orchestrator_kp.public_key_bytes(),
+    required_scope="write:draft",
+)
+response = mw({"params": {"metadata": {"aip_token": to_writer.to_base64()}}})
+print(response)  # {'result': 'drafted'}
+</code></pre>
+<p>The verifier checks: every signature, scope-attenuation at every hop, depth ≤ <code>max_depth</code>, no expired block, declared budget non-negative, and that the final delegation targets the writer's own AIP id.</p>
+</section>
+
+<section class="step">
+<p class="step-num">STEP 5</p>
+<h2>What you can't do</h2>
+<p>Try modifying the example to reproduce these — every one fails:</p>
+<ul>
+<li><strong>Widen scope:</strong> in step 3 set <code>scopes=["write:draft", "delete"]</code>. Researcher's parent scope did not include <code>delete</code>, so the next verifier rejects with <code>aip_scope_widening</code>.</li>
+<li><strong>Drop context:</strong> set <code>context=""</code>. <code>append_delegation_block</code> raises <code>ValueError</code> immediately (spec §4 step 3).</li>
+<li><strong>Bypass depth:</strong> set <code>max_depth=1</code> in step 1. The third delegation in step 3 raises a depth error before serializing.</li>
+<li><strong>Replay:</strong> let the token expire (set <code>ttl_seconds=1</code>, sleep 2s). The leaf verifier rejects with <code>aip_token_expired</code>.</li>
+</ul>
+<div class="callout"><strong>Deny by default.</strong> The verifier never returns &quot;valid but suspicious.&quot; It either accepts the entire chain or rejects with a specific error code. There is no permissive middle.</div>
+</section>
+
+<section class="step">
+<p class="step-num">STEP 6</p>
+<h2>When to use <code>max_depth</code> vs <code>budget</code></h2>
+<p><strong><code>max_depth</code></strong> caps the structural extent of delegation. Use it to express &quot;at most one specialist redelegation,&quot; or &quot;no further hops past this point.&quot; It's a per-chain hard limit set at the root.</p>
+<p><strong><code>budget_cents</code></strong> caps the cumulative cost or work the chain can authorise. Each block declares its own ceiling; the runtime tracks aggregate spend. Use it to express &quot;this whole task is worth at most $5.&quot;</p>
+<p>They are complementary: depth limits structure, budget limits effect.</p>
+</section>
+
+<section class="step">
+<p class="step-num">FULL EXAMPLE</p>
+<h2>Working code</h2>
+<p>The runnable version of this scenario lives at <a href="https://github.com/sunilp/aip/tree/master/examples/a2a-multi-agent">examples/a2a-multi-agent</a>. Clone, install, run <code>./run.sh</code>. For the normative spec, see <a href="/aip/spec/#aip-delegation">spec §Delegation</a>.</p>
+</section>
+
+</main>
+
+</body>
+</html>
