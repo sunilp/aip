@@ -147,6 +147,27 @@ delegated.authorize("tool:search", root_kp.public_key_bytes())  # passes
 delegated.authorize("tool:email", root_kp.public_key_bytes())   # raises
 ```
 
+## A2A Integration
+
+Wrap any A2A task handler with `A2AVerifyMiddleware` to verify incoming AIP tokens, check audience and scope, and pass the verified identity to your handler:
+
+```python
+from aip_a2a import A2AVerifyMiddleware
+
+middleware = A2AVerifyMiddleware(
+    your_handler,
+    own_aip_id="aip:web:acme.com/agent",
+    root_public_key_bytes=root_pubkey,
+    required_scope="research:read",
+)
+```
+
+The middleware extracts the chained token from `metadata.aip_token` (per spec §3), verifies the full chain end-to-end (signatures, attenuation, depth, expiry, audience), and only then calls your handler with `context.subject` / `context.chain_depth` / `context.issuer`.
+
+Use `append_delegation_block()` from the same module before forwarding tasks to attenuate scope down the chain.
+
+[A2A integration guide](https://sunilprakash.com/aip/guides/a2a/) | [Multi-hop delegation guide](https://sunilprakash.com/aip/guides/delegation/)
+
 ## MCP Auth Proxy
 
 Protect any MCP server with one command:
@@ -172,6 +193,8 @@ pip install aip-agents[adk]       # Google ADK
 pip install aip-agents[langchain] # LangChain
 pip install aip-agents[all]       # all frameworks
 ```
+
+The package ships four sub-packages: `aip_core` (crypto, identity), `aip_token` (compact + chained tokens), `aip_mcp` (MCP binding + auth proxy), and `aip_a2a` (A2A binding: middleware, chain verification, delegation helpers).
 
 PyPI: [agent-identity-protocol](https://pypi.org/project/agent-identity-protocol/) | [aip-agents](https://pypi.org/project/aip-agents/)
 
