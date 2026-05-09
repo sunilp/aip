@@ -14,7 +14,7 @@ def make_handler() -> A2AVerifyMiddleware:
     pubkey_hex = os.environ["ROOT_PUBKEY"]
 
     def handler(body, *, context):
-        print(f"writer: verified subject={context.subject} depth={context.chain_depth}")
+        print(f"writer: verified subject={context.subject} depth={context.chain_depth}", flush=True)
         return {
             "jsonrpc": "2.0",
             "id": body.get("params", {}).get("task_id"),
@@ -45,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     Handler.middleware = make_handler()
-    print(f"writer listening on :{PORT} as {WRITER_ID}")
+    print(f"writer listening on :{PORT} as {WRITER_ID}", flush=True)
     HTTPServer(("", PORT), Handler).serve_forever()
 
 

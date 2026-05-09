@@ -47,7 +47,7 @@ def make_handler() -> A2AVerifyMiddleware:
     root_pk = bytes.fromhex(pubkey_hex)
 
     def handler(body, *, context):
-        print(f"researcher: verified subject={context.subject} depth={context.chain_depth}")
+        print(f"researcher: verified subject={context.subject} depth={context.chain_depth}", flush=True)
         token_str = body["params"]["metadata"]["aip_token"]
         writer_response = forward_to_writer(token_str, root_pk)
         return {"jsonrpc": "2.0", "id": body.get("params", {}).get("task_id"), "result": writer_response.get("result")}
@@ -76,7 +76,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     Handler.middleware = make_handler()
-    print(f"researcher listening on :{PORT} as {RESEARCHER_ID}")
+    print(f"researcher listening on :{PORT} as {RESEARCHER_ID}", flush=True)
     HTTPServer(("", PORT), Handler).serve_forever()
 
 

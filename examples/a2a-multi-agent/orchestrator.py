@@ -11,6 +11,7 @@ from pathlib import Path
 from aip_a2a import append_delegation_block
 from aip_core.crypto import KeyPair
 from aip_token.chained import ChainedToken
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 KEYS_DIR = Path(__file__).parent / "keys"
 RESEARCHER_URL = "http://localhost:8001/tasks/send"
@@ -23,9 +24,10 @@ def load_or_create_root_keypair() -> KeyPair:
     KEYS_DIR.mkdir(exist_ok=True)
     sk_path = KEYS_DIR / "orchestrator.sk"
     if sk_path.exists():
-        return KeyPair.from_seed(sk_path.read_bytes())
+        return KeyPair(Ed25519PrivateKey.from_private_bytes(sk_path.read_bytes()))
     kp = KeyPair.generate()
-    sk_path.write_bytes(kp.seed_bytes())
+    print("first run — generating orchestrator key...", flush=True)
+    sk_path.write_bytes(kp.private_key_bytes())
     (KEYS_DIR / "orchestrator.pub").write_bytes(kp.public_key_bytes())
     return kp
 
@@ -70,7 +72,7 @@ def main() -> None:
 
     # Print public key so researcher/writer can verify; in a real deployment,
     # they would resolve this from the orchestrator's identity document.
-    print("\nroot_public_key (hex):", root_kp.public_key_bytes().hex())
+    print("\nroot pubkey:", root_kp.public_key_bytes().hex())
 
 
 if __name__ == "__main__":
