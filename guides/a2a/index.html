@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AIP for A2A — Add identity to agent-to-agent calls</title>
+<link rel="stylesheet" href="/aip/css/style.css"/>
+<meta name="description" content="Wrap your A2A server with AIP token verification. Five lines of code. Cryptographically verifiable identity, scoped delegation, no shared secrets."/>
+<style>
+pre { background:#f5f5f3; border:1px solid var(--border); border-radius:6px; padding:20px 24px; overflow-x:auto; font-size:13.5px; line-height:1.6; margin:24px 0; }
+code { font-family: var(--mono); font-size:0.88em; background:#f5f5f3; padding:2px 6px; border-radius:3px; }
+pre code { background:none; padding:0; }
+.guide-section { margin: 48px 0; }
+.guide-section h2 { font-family: var(--serif); font-size: 24px; margin-bottom: 12px; }
+.callout { background:#fef3c7; border-left:3px solid #d97706; padding:16px 20px; margin:24px 0; }
+</style>
+</head>
+<body>
+
+<header style="padding: 48px 48px 16px; max-width: 880px; margin: 0 auto;">
+<h1 style="font-family: var(--serif); margin:0 0 8px;">AIP for A2A</h1>
+<p style="color: var(--ink-muted); margin:0;">Add cryptographically verifiable identity and scoped delegation to your A2A agents.</p>
+</header>
+
+<main style="max-width: 880px; margin: 0 auto; padding: 0 48px 96px;">
+
+<section class="guide-section">
+<h2>What this is</h2>
+<p>The Agent-to-Agent (A2A) protocol carries tasks between agents over HTTP. AIP adds an <em>identity layer</em>: every task carries a chained token in <code>metadata.aip_token</code>, the receiver verifies the signature chain and scope, and the agent card declares the receiver's AIP identifier so callers know who they're talking to. No shared secrets. No bearer tokens that can be stolen and replayed.</p>
+</section>
+
+<section class="guide-section">
+<h2>Install</h2>
+<pre><code>pip install agent-identity-protocol>=0.3.0</code></pre>
+<p>Generate an Ed25519 keypair for your agent:</p>
+<pre><code>python -c "from aip_core.crypto import KeyPair; kp = KeyPair.generate(); print('pub:', kp.public_key_bytes().hex()); open('agent.sk','wb').write(kp.private_key_bytes())"</code></pre>
+</section>
+
+<section class="guide-section">
+<h2>Server side — verify incoming tasks</h2>
+<p>Wrap your task handler in <code>A2AVerifyMiddleware</code>. The middleware extracts the token from <code>metadata.aip_token</code>, verifies the chain, checks audience and scope, and only then calls your handler.</p>
+<pre><code>from aip_a2a import A2AVerifyMiddleware
+
+OWN_ID = "aip:web:acme.com/researcher"
+ROOT_PUBKEY = bytes.fromhex("...")  # the orchestrator's pubkey
+
+def handle_task(body, *, context):
+    # context.subject == OWN_ID, context.chain_depth, context.issuer
+    print(f"verified caller chain depth={context.chain_depth}")
+    return {"jsonrpc": "2.0", "result": "..."}
+
+middleware = A2AVerifyMiddleware(
+    handle_task,
+    own_aip_id=OWN_ID,
+    root_public_key_bytes=ROOT_PUBKEY,
+    required_scope="research:read",
+)
+
+# Use middleware(parsed_request_body) inside your A2A server.
+</code></pre>
+</section>
+
+<section class="guide-section">
+<h2>Client side — forward a task with delegation</h2>
+<p>Before calling another A2A agent, append a delegation block that attenuates scope:</p>
+<pre><code>from aip_a2a import append_delegation_block
+
+extended = append_delegation_block(
+    incoming_token,                      # your verified token
+    delegator="aip:web:acme.com/researcher",
+    delegate="aip:web:acme.com/writer",  # the next agent
+    scopes=["write:draft"],              # narrowed
+    context="draft-summary",
+    budget_cents=50,
+)
+
+body = {
+  "jsonrpc": "2.0",
+  "method": "tasks/send",
+  "params": {
+    "task_id": "task-2",
+    "message": {"role": "user", "parts": [{"text": "..."}]},
+    "metadata": {"aip_token": extended.to_base64()},
+  },
+}
+</code></pre>
+</section>
+
+<section class="guide-section">
+<h2>Agent card extension</h2>
+<p>Your agent card MUST include an <code>aip_identity</code> extension so callers can resolve your identity document and verify mutual auth (when used).</p>
+<pre><code>{
+  "name": "Researcher",
+  "skills": ["research"],
+  "aip_identity": {
+    "id": "aip:web:acme.com/researcher",
+    "document_url": "https://acme.com/.well-known/aip/agents/researcher.json"
+  }
+}
+</code></pre>
+<p>For the full normative requirements, see <a href="/aip/spec/#aip-bindings-a2a">spec §A2A binding</a>.</p>
+</section>
+
+<section class="guide-section">
+<h2>Try to break it</h2>
+<p>Run the working example:</p>
+<pre><code>git clone https://github.com/sunilp/aip
+cd aip/examples/a2a-multi-agent
+./run.sh</code></pre>
+<p>Then try these:</p>
+<ul>
+<li>Tamper with the token (flip a byte in the base64). The receiver returns <code>{"error":{"code":"aip_chain_invalid"},"status":401}</code>.</li>
+<li>Set <code>required_scope="delete"</code> in the writer. Verification fails with <code>aip_scope_insufficient</code>.</li>
+<li>Set <code>own_aip_id</code> on the writer to a different identifier. Verification fails with <code>aip_audience_mismatch</code>.</li>
+</ul>
+<div class="callout"><strong>Why this works:</strong> AIP fails closed. Any tampering, scope-widening, audience mismatch, or expired block rejects the request before your handler runs.</div>
+</section>
+
+<section class="guide-section">
+<h2>Next</h2>
+<p>For multi-hop delegation, see the <a href="/aip/guides/delegation/">chained delegation guide</a>. For the full normative spec, see <a href="/aip/spec/">/aip/spec/</a>.</p>
+</section>
+
+</main>
+
+</body>
+</html>
