@@ -11,7 +11,7 @@
 
 ## The problem
 
-MCP has no authentication. A2A has self-declared identities with no attestation. Your agents call tools anonymously, delegate to other agents without verification, and leave no audit trail. When something goes wrong, you have no way to trace who authorized what.
+MCP has no authentication. A2A can attest an agent card with a JWS signature, but that signature covers the card, not the delegation behind a request. Your agents call tools anonymously, delegate to other agents without verification, and leave no audit trail. When something goes wrong, you have no way to trace who authorized what.
 
 ```
   Agent A            Agent B            MCP Server

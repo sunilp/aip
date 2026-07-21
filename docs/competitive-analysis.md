@@ -12,7 +12,7 @@ Agent Identity Protocol (AIP) addresses the unsolved agent identity gap in the M
 
 No identity flows across MCP and A2A protocol boundaries:
 - MCP has no authentication layer (Knostic scanned ~2,000 MCP servers, all lacked auth)
-- A2A has self-declared identities with no attestation binding
+- A2A supports JWS-signed agent cards (`AgentCard.signatures`, RFC 7515), but the signature attests the card, not the delegation chain behind a given request
 - When Agent A delegates to Agent B, no identity verification happens
 - IETF's most ambitious draft (AIMS, March 2026) has "TODO Security" in its authorization section
 

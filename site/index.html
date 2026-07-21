@@ -170,7 +170,7 @@
         <div class="aip-authgap__grid">
           <div class="aip-authgap__copy">
             <p>A scan of approximately 2,000 MCP servers found zero authentication. MCP recently added OAuth 2.1, but it covers only single-hop auth: when an orchestrator delegates to a specialist that calls a tool, the delegation chain disappears.</p>
-            <p>A2A is worse. Agent identities are self-declared strings in <code>aip_identity</code> fields with no cryptographic attestation. Any agent can claim to be any other agent.</p>
+            <p>A2A goes further. An <code>AgentCard</code> can carry RFC 7515 JWS signatures, so an agent's identity and endpoints can be attested. What a signed card does not carry is the delegation behind a request: that this agent is acting for a user who authorized it, through however many hops, with authority narrowing at each one.</p>
           </div>
           <div class="aip-authgap__svg-wrap" aria-hidden="true">
             <svg class="aip-authgap__svg" viewBox="0 0 280 220" role="img" aria-labelledby="authgap-title authgap-desc">
