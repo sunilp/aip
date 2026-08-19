@@ -47,41 +47,11 @@ X-AIP-Token-Ref: https://issuer.example/.well-known/aip/tokens/<token-id>
 
 ## 3. Server-Side Verification
 
-When an MCP server receives a request with an AIP token, it MUST perform the following 5-step verification:
+An MCP server extracts the token from the `X-AIP-Token` header, or fetches it from the URL in `X-AIP-Token-Ref`, and then verifies it according to [AIP Verification](aip-verification.md).
 
-### Step 1: Extract Token
+If neither header is present and the server has `require_aip: true`, it returns error `aip_token_missing`.
 
-Extract the token from the `X-AIP-Token` header. If the header is absent, check for `X-AIP-Token-Ref` and fetch the full token from the referenced URL.
-
-If neither header is present and the server has `require_aip: true`, return error `aip_token_missing`.
-
-### Step 2: Verify Signatures
-
-Verify the token's cryptographic signature(s) against the identity document resolved from the issuer identity (`iss` claim in compact mode, Block 0 `identity` fact in chained mode).
-
-- For compact mode: verify the single JWT signature against the issuer's public key.
-- For chained mode: verify the signature on every block against the respective signer's public key.
-
-If signature verification fails, return error `aip_signature_invalid`.
-If the issuer's identity document cannot be resolved, return error `aip_identity_unresolvable`.
-
-### Step 3: Check Policy
-
-Determine whether the token authorizes the requested tool call:
-
-- Check that the requested tool is included in the token's `scope` (compact) or `right` facts (chained).
-- If the token does not authorize the operation, return error `aip_scope_insufficient`.
-
-### Step 4: Check Chain Constraints (Chained Mode)
-
-For chained mode tokens, perform additional checks at each block in the chain:
-
-1. **Delegation depth:** Verify the chain does not exceed `max_depth`. If exceeded, return error `aip_depth_exceeded`.
-2. **Budget ceiling:** Verify the declared budget is non-negative. If the budget is insufficient for the declared operation cost, return error `aip_budget_exceeded`.
-3. **Expiry:** Verify that no block in the chain has expired. If any block has expired, return error `aip_token_expired`.
-4. **Scope attenuation:** Verify that each delegation block's capabilities are a subset of its parent block.
-5. **Context:** Verify that each delegation block has a non-empty `context` field.
-6. **Key revocation:** If the identity document includes a revocation endpoint, check whether any signing key has been revoked. If revoked, return error `aip_key_revoked`.
+The verification steps are not restated here. The algorithm is binding-independent, and an MCP server that verifies tokens differently from an A2A agent is a source of exactly the divergence the algorithm exists to prevent.
 
 ### Step 5: Inject Verified Identity
 

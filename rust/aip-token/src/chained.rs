@@ -424,8 +424,11 @@ impl ChainedToken {
 
 /// Render a block's scope constraint as one self-contained check.
 ///
-/// Wildcard patterns become `starts_with` clauses joined to the exact-match
-/// clause with `or`. The check MUST be self-contained: a rule-based encoding
+/// An all-exact scope set produces the Simple profile form (spec/aip-tokens.md
+/// section 7.1). A set containing a wildcard produces the Standard profile
+/// form (section 7.2), where patterns become `starts_with` clauses joined to
+/// the exact-match clause with `or`. The check MUST be self-contained: a
+/// rule-based encoding
 /// does not attenuate, because a delegation block's narrower rule is unioned
 /// with the authority block's broader rule of the same name rather than
 /// replacing it, and the broader one then satisfies the delegation's check.

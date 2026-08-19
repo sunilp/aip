@@ -225,7 +225,7 @@ Rust reference implementation available in `rust/`.
 > Sunil Prakash. **AIP: Agent Identity Protocol for Verifiable Delegation Across MCP and A2A.** arXiv preprint arXiv:2603.24775, 2026.
 > [https://arxiv.org/abs/2603.24775](https://arxiv.org/abs/2603.24775)
 
-- **IETF Internet-Draft:** [draft-prakash-aip-00](https://datatracker.ietf.org/doc/draft-prakash-aip/) (expires 2026-09-28)
+- **IETF Internet-Draft:** [draft-prakash-aip-01](https://datatracker.ietf.org/doc/draft-prakash-aip/) (expires 2027-02-20)
 - **NIST:** Under evaluation for the NCCoE agent identity demonstration project
 
 ```bibtex

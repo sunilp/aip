@@ -26,6 +26,10 @@ Defines the AIP identity scheme, including agent identifiers, identity documents
 
 Defines the two token formats used in AIP. Compact tokens are JWTs signed with Ed25519, suitable for single-hop authentication where no delegation is needed. Chained tokens use the Biscuit format to support multi-hop delegation with cryptographic scope attenuation. Also defines the three policy profiles (Simple, Standard, Advanced) and the verification rules for each.
 
+### [spec/aip-verification.md](spec/aip-verification.md) -- Verification
+
+Defines the normative algorithm a verifier performs on a token: steps V1 through V7, covering chain integrity, root binding, depth, the structural attenuation walk, delegation context, policy evaluation, and revocation with bounded staleness. Specifies the ordering between them and the error code each failure returns. Also states what a passing verification does and does not establish, in particular that an AIP token is a bearer credential and verification does not authenticate the presenter.
+
 ### [spec/aip-delegation.md](spec/aip-delegation.md) -- Delegation
 
 Specifies the rules for delegation chains, including how an agent appends a new block to a chained token that narrows the granted scope. Covers ephemeral grants for short-lived, tightly scoped delegations and defines the full delegation lifecycle from initial grant through chain extension to expiration. Includes formal rules for scope attenuation validation.
