@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::time::{Duration, SystemTime};
 
 use biscuit_auth::{
@@ -54,19 +55,11 @@ impl ChainedToken {
             datalog.push_str(&format!("right(\"{scope}\");\n"));
         }
 
-        // Scope check: the requested tool must be in the authority's allowed set.
-        // The authorizer provides a `tool(...)` ambient fact for the tool being invoked.
-        if !scopes.is_empty() {
-            let set_items: Vec<String> = scopes.iter().map(|s| format!("\"{s}\"")).collect();
-            datalog.push_str(&format!(
-                "check if tool($t), [{items}].contains($t);\n",
-                items = set_items.join(", ")
-            ));
-        }
+        datalog.push_str(&tool_check(scopes));
 
         // budget fact (optional)
         if let Some(cents) = budget_cents {
-            datalog.push_str(&format!("budget({cents});\n"));
+            datalog.push_str(&format!("budget_ceiling({cents});\n"));
         }
 
         // max_depth fact
@@ -191,6 +184,34 @@ impl ChainedToken {
             return Err(TokenError::DepthExceeded);
         }
 
+        // 2a. Attenuation, checked here as a convenience to the delegator. It
+        // is checked again at verification, because an attacker appending a
+        // block does not run this code.
+        if let Some(parent) = self.effective_scopes() {
+            let widened: Vec<&str> = scopes
+                .iter()
+                .filter(|s| !parent.iter().any(|p| covers(p, s)))
+                .copied()
+                .collect();
+            if !widened.is_empty() {
+                return Err(TokenError::ScopeInsufficient(format!(
+                    "delegation would widen scope: {}",
+                    widened.join(", ")
+                )));
+            }
+        }
+
+        if let Some(cents) = budget_cents {
+            if cents < 0 {
+                return Err(TokenError::BudgetExceeded);
+            }
+            if let Some(parent) = self.effective_budget() {
+                if cents > parent {
+                    return Err(TokenError::BudgetExceeded);
+                }
+            }
+        }
+
         // 3. Build Datalog source for the delegation block.
         let mut datalog = String::new();
 
@@ -199,21 +220,12 @@ impl ChainedToken {
         datalog.push_str(&format!("delegate(\"{delegate}\");\n"));
         datalog.push_str(&format!("context(\"{context}\");\n"));
 
-        // Scope check: the requested tool must be in this delegation's allowed set.
-        // The authorizer provides a `tool(...)` ambient fact for the tool being invoked.
-        if !scopes.is_empty() {
-            let set_items: Vec<String> = scopes.iter().map(|s| format!("\"{s}\"")).collect();
-            datalog.push_str(&format!(
-                "check if tool($t), [{items}].contains($t);\n",
-                items = set_items.join(", ")
-            ));
-        }
+        datalog.push_str(&tool_check(scopes));
 
-        // Budget check (if set): the authority budget must be >= this value.
+        // Budget ceiling is a fact, not a check. A Datalog check cannot express
+        // "narrower than my parent"; the verifier's attenuation walk does that.
         if let Some(cents) = budget_cents {
-            datalog.push_str(&format!(
-                "check if budget($b), $b >= {cents};\n"
-            ));
+            datalog.push_str(&format!("budget_ceiling({cents});\n"));
         }
 
         // 4. Build the block and append it.
@@ -241,6 +253,123 @@ impl ChainedToken {
     /// checks of the form `check if tool($t), [allowed].contains($t)`. The
     /// authorizer supplies the requested tool as a `tool(...)` fact, so every
     /// block in the chain must agree the tool is permitted.
+    /// Number of blocks in the chain, including the authority block.
+    pub fn block_count(&self) -> usize {
+        self.biscuit.block_count()
+    }
+
+    /// Datalog source of one block. Only meaningful after signature verification.
+    pub fn block_source(&self, index: usize) -> Result<String, TokenError> {
+        self.biscuit
+            .print_block_source(index)
+            .map_err(|e| TokenError::TokenMalformed(format!("cannot read block {index}: {e}")))
+    }
+
+    /// The narrowest allowlist declared so far, or None if unconstrained.
+    fn effective_scopes(&self) -> Option<HashSet<String>> {
+        let mut scopes: Option<HashSet<String>> = None;
+        for i in 0..self.block_count() {
+            let source = match self.block_source(i) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            if let Some(block_scopes) = parse_scopes(&source) {
+                // The last declaration is the narrowest: every block that
+                // declares scopes was checked against its parent when it was
+                // appended and again in the attenuation walk.
+                scopes = Some(block_scopes);
+            }
+        }
+        scopes
+    }
+
+    /// The lowest ceiling declared so far, or None if none is declared.
+    fn effective_budget(&self) -> Option<i64> {
+        let mut budget: Option<i64> = None;
+        for i in 0..self.block_count() {
+            let source = match self.block_source(i) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            if let Some(cents) = extract_int_fact(&source, "budget_ceiling") {
+                budget = Some(match budget {
+                    None => cents,
+                    Some(current) => current.min(cents),
+                });
+            }
+        }
+        budget
+    }
+
+    /// V4: confirm every hop narrows its parent. V5: context is present.
+    ///
+    /// This is not satisfied by the container format. Signature chaining (V1)
+    /// proves blocks were appended in order by successive keyholders. It does
+    /// not prove block i asserts no more than block i-1 held.
+    fn attenuation_walk(&self) -> Result<(), TokenError> {
+        let mut scopes: Option<HashSet<String>> = None;
+        let mut budget: Option<i64> = None;
+        let mut principal: Option<String> = None;
+
+        for index in 0..self.block_count() {
+            let source = self.block_source(index)?;
+
+            if index > 0 {
+                // V5: every delegation block carries a non-empty context.
+                match extract_string_fact(&source, "context") {
+                    Some(c) if !c.trim().is_empty() => {}
+                    _ => {
+                        return Err(TokenError::TokenMalformed(format!(
+                            "delegation block {index} has no context"
+                        )))
+                    }
+                }
+            }
+
+            if let Some(block_scopes) = parse_scopes(&source) {
+                if let Some(ref parent) = scopes {
+                    let widened: Vec<String> = block_scopes
+                        .iter()
+                        .filter(|c| !parent.iter().any(|p| covers(p, c)))
+                        .cloned()
+                        .collect();
+                    if !widened.is_empty() {
+                        return Err(TokenError::ScopeInsufficient(format!(
+                            "block {index} widens scope: {}",
+                            widened.join(", ")
+                        )));
+                    }
+                }
+                scopes = Some(block_scopes);
+            }
+
+            if let Some(cents) = extract_int_fact(&source, "budget_ceiling") {
+                if cents < 0 {
+                    return Err(TokenError::BudgetExceeded);
+                }
+                if let Some(parent) = budget {
+                    if cents > parent {
+                        return Err(TokenError::BudgetExceeded);
+                    }
+                }
+                budget = Some(cents);
+            }
+
+            if let Some(block_principal) = extract_string_fact(&source, "principal") {
+                if let Some(ref current) = principal {
+                    if *current != block_principal {
+                        return Err(TokenError::TokenMalformed(format!(
+                            "block {index} substitutes the principal: {current} became {block_principal}"
+                        )));
+                    }
+                }
+                principal = Some(block_principal);
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn authorize(&self, tool: &str, root_public_key: &[u8; 32]) -> Result<(), TokenError> {
         // 1. Construct biscuit PublicKey from root_public_key bytes
         let biscuit_pubkey = BiscuitPublicKey::from_bytes(root_public_key, Algorithm::Ed25519)
@@ -253,6 +382,14 @@ impl ChainedToken {
             .map_err(|e| TokenError::VerificationFailed(format!("serialize for re-verify: {e}")))?;
         let verified = Biscuit::from(&bytes, biscuit_pubkey)
             .map_err(|e| TokenError::VerificationFailed(format!("re-verify: {e}")))?;
+
+        // V3: depth. The chain must not exceed the declared maximum.
+        if self.current_depth() > self.max_delegation_depth as usize {
+            return Err(TokenError::DepthExceeded);
+        }
+
+        // V4 and V5: structural attenuation walk and delegation context.
+        self.attenuation_walk()?;
 
         // 3. Build the authorizer with ambient facts and an allow policy.
         //    - tool("tool:search")   -- the tool being requested
@@ -282,6 +419,112 @@ impl ChainedToken {
         })?;
 
         Ok(())
+    }
+}
+
+/// Render a block's scope constraint as one self-contained check.
+///
+/// An all-exact scope set produces the Simple profile form (spec/aip-tokens.md
+/// section 7.1). A set containing a wildcard produces the Standard profile
+/// form (section 7.2), where patterns become `starts_with` clauses joined to
+/// the exact-match clause with `or`. The check MUST be self-contained: a
+/// rule-based encoding
+/// does not attenuate, because a delegation block's narrower rule is unioned
+/// with the authority block's broader rule of the same name rather than
+/// replacing it, and the broader one then satisfies the delegation's check.
+fn tool_check(scopes: &[&str]) -> String {
+    let exact: Vec<&str> = scopes.iter().filter(|s| !s.ends_with('*')).copied().collect();
+    let wildcards: Vec<&str> = scopes.iter().filter(|s| s.ends_with('*')).copied().collect();
+
+    let mut clauses: Vec<String> = Vec::new();
+    if !exact.is_empty() {
+        let items: Vec<String> = exact.iter().map(|s| format!("\"{s}\"")).collect();
+        clauses.push(format!("tool($t), [{}].contains($t)", items.join(", ")));
+    }
+    for pattern in wildcards {
+        let prefix = &pattern[..pattern.len() - 1];
+        if prefix.is_empty() {
+            clauses.push("tool($t)".to_string());
+        } else {
+            clauses.push(format!("tool($t), $t.starts_with(\"{prefix}\")"));
+        }
+    }
+
+    if clauses.is_empty() {
+        return String::new();
+    }
+    format!("check if {};\n", clauses.join(" or "))
+}
+
+/// Does a parent scope pattern permit a child scope?
+///
+/// A wildcard in the parent permits any specific value in the child. A
+/// specific value in the parent never widens to a wildcard in the child.
+fn covers(pattern: &str, scope: &str) -> bool {
+    if pattern == scope || pattern == "*" {
+        return true;
+    }
+    match pattern.strip_suffix('*') {
+        Some(prefix) => scope.starts_with(prefix),
+        None => false,
+    }
+}
+
+/// Extract a block's scope patterns from its tool check.
+///
+/// The check statement is the authoritative declaration, because it is what
+/// constrains authorization. `right` facts are descriptive metadata and are
+/// deliberately not trusted here.
+///
+/// Returns None when the block has no tool check, meaning it does not
+/// constrain scope and inherits its parent's allowlist.
+fn parse_scopes(source: &str) -> Option<HashSet<String>> {
+    let body = source.lines().find_map(|line| {
+        let line = line.trim();
+        let rest = line.strip_prefix("check if ")?;
+        let rest = rest.strip_suffix(';').unwrap_or(rest);
+        if rest.contains("tool($t)") {
+            Some(rest.to_string())
+        } else {
+            None
+        }
+    })?;
+
+    let mut scopes = HashSet::new();
+    for clause in body.split(" or ") {
+        let clause = clause.trim();
+        if clause == "tool($t)" {
+            scopes.insert("*".to_string());
+            continue;
+        }
+        if let (Some(open), Some(close)) = (clause.find('['), clause.find(']')) {
+            if close > open {
+                let mut rest = &clause[open + 1..close];
+                while let Some(q) = rest.find('"') {
+                    let after = &rest[q + 1..];
+                    match after.find('"') {
+                        Some(end) => {
+                            scopes.insert(after[..end].to_string());
+                            rest = &after[end + 1..];
+                        }
+                        None => break,
+                    }
+                }
+            }
+        }
+        let marker = "$t.starts_with(\"";
+        if let Some(start) = clause.find(marker) {
+            let after = &clause[start + marker.len()..];
+            if let Some(end) = after.find('"') {
+                scopes.insert(format!("{}*", &after[..end]));
+            }
+        }
+    }
+
+    if scopes.is_empty() {
+        None
+    } else {
+        Some(scopes)
     }
 }
 

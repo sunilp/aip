@@ -88,12 +88,12 @@ def audit_chained(token: "ChainedToken") -> AuditResult:
     # stable introspection API exposed by biscuit-python.
     try:
         source = token._biscuit.block_source(0)
-        if source and "budget(" in source:
+        if source and "budget_ceiling(" in source:
             for line in source.split("\n"):
                 line = line.strip().rstrip(";")
-                if line.startswith("budget("):
+                if line.startswith("budget_ceiling("):
                     # Extract integer between budget( and )
-                    inner = line[len("budget("):-1]
+                    inner = line[len("budget_ceiling("):-1]
                     try:
                         cents = int(inner)
                         if cents > HIGH_BUDGET_CENTS:

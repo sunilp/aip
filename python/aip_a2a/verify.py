@@ -82,18 +82,18 @@ def verify_a2a_task(
             f"final delegation targets {final_delegate!r}, expected {expected_audience!r}"
         )
 
-    # Scope check: ChainedToken.authorize() re-verifies the full chain and
-    # evaluates every block's `check if right(...)` rules — this enforces
-    # scope attenuation across delegation hops.
+    # Scope check: ChainedToken.authorize() runs the verification algorithm in
+    # draft-prakash-aip-01 Section 4, which re-verifies every block signature
+    # and walks the chain confirming each hop narrows its parent.
     try:
         token.authorize(required_scope, root_public_key_bytes)
     except TokenError as exc:
-        if exc.code == "aip_token_expired":
+        if exc.code == "token_expired":
             raise ExpiryError() from exc
+        if exc.code == "scope_insufficient":
+            raise ScopeError(required_scope) from exc
         raise ChainError(str(exc)) from exc
     except Exception as exc:
-        # biscuit_auth.AuthorizationError or similar — the requested scope is not
-        # authorized at some point in the chain.
         raise ScopeError(required_scope) from exc
 
     return VerifiedIdentity(

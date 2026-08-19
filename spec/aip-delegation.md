@@ -27,9 +27,12 @@ Attenuation applies along all capability dimensions:
 | Dimension | Attenuation Rule |
 |---|---|
 | Tools | Child block tool set MUST be a subset of parent block tool set. |
-| Budget | Child block budget MUST be less than or equal to parent block budget. |
+| Budget | Child block `budget_ceiling` MUST be non-negative and MUST NOT exceed the nearest ancestor that declares one. |
 | Domains | Child block domain set MUST be a subset of parent block domain set. |
 | Time | Child block expiration MUST be less than or equal to parent block expiration. |
+| Principal | If an ancestor declares a `principal`, no later block may declare a different one. |
+
+A dimension absent from a child block inherits the value of its nearest ancestor.
 
 ### 2.3 Example
 
@@ -46,8 +49,9 @@ In this chain:
 ### 2.4 Requirements
 
 1. Each delegation block MUST contain capabilities that are a subset of its parent block's capabilities.
-2. Attempting to widen scope (adding tools, increasing budget, expanding domains, extending expiration) MUST cause verification to fail.
-3. Verifiers MUST check attenuation at every hop in the delegation chain.
+2. Attempting to widen scope (adding tools, raising the budget ceiling, expanding domains, extending expiration, substituting the principal) MUST cause verification to fail.
+3. Verifiers MUST check attenuation at every hop in the delegation chain, by performing the structural walk defined in [AIP Verification](aip-verification.md) step V4.
+4. Checking attenuation at delegation time is a convenience to the delegator and is NOT sufficient on its own. An attacker appending a block does not run the delegating implementation's code, so the walk at verification time is what enforces this property.
 4. A wildcard capability (`*`) in a parent block permits any specific capability in child blocks.
 5. A specific capability in a parent block MUST NOT be widened to a wildcard in a child block.
 

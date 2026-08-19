@@ -18,3 +18,5 @@ biscuit-auth = "6"
 
 [dev-dependencies]
 aip-core = { path = "../aip-core" }
+biscuit-auth = "6"
+chrono = { version = "0.4" }

@@ -134,10 +134,17 @@ Block 0 MUST contain the following Biscuit facts:
 | Fact | Description |
 |---|---|
 | `identity($id)` | AIP identifier of the root authority. |
-| `right($capability)` | One fact per authorized capability (e.g., `right("tool:search")`). |
-| `budget($amount)` | Authorization budget ceiling in USD. |
+| `principal($id)` | OPTIONAL. The on-behalf-of principal. Invariant along the chain. |
+| `right($capability)` | One fact per authorized capability (e.g., `right("tool:search")`). Descriptive. |
+| `budget_ceiling($cents)` | OPTIONAL. Authorization ceiling in integer cents. |
 | `max_depth($depth)` | Maximum delegation chain depth. |
-| `expires($timestamp)` | Expiration timestamp. |
+
+Block 0 MUST also carry the scope check and the expiry check defined in Section 7.1.
+
+The `right` facts are descriptive metadata. The scope check is what constrains
+authorization, and verifiers determine a block's scope from that check rather
+than from the `right` facts. A block carrying a permissive check and no
+matching facts would otherwise read as declaring nothing.
 
 ### 4.4 Delegation Block Facts
 
@@ -147,15 +154,18 @@ Each delegation block (Block 1..N-1) MUST contain:
 |---|---|
 | `delegator($id)` | AIP identifier of the delegating agent. |
 | `delegate($id)` | AIP identifier of the receiving agent. |
-| `right($capability)` | Attenuated capabilities (MUST be a subset of the parent block). |
-| `budget($amount)` | Attenuated budget ceiling (MUST be <= parent budget). |
 | `context($text)` | Non-empty string describing the delegation reason. |
+| `principal($id)` | OPTIONAL. MUST match the principal declared by an ancestor. |
+| `budget_ceiling($cents)` | OPTIONAL. MUST NOT exceed the nearest ancestor's ceiling. |
+
+Each delegation block MUST also carry the scope check defined in Section 7.1, and MAY carry an expiry check no later than its parent's.
 
 **Requirements:**
 
 1. Each delegation block MUST be signed by the delegator.
 2. The `context` field MUST be non-empty. Verifiers MUST reject tokens with missing or empty context fields.
-3. Scope attenuation is enforced cryptographically: each block's capabilities MUST be a subset of the parent block's capabilities.
+3. Scope narrowing follows from conjunction: every block contributes a scope check and all checks in all blocks MUST pass, so the authorized set is the intersection of the per-block allowlists. Naming a capability absent from an ancestor's allowlist produces an empty intersection and authorizes nothing.
+4. Verifiers MUST additionally perform the structural attenuation walk in [AIP Verification](aip-verification.md) step V4. Conjunction prevents a widened block from being useful; the walk is what detects and reports it.
 
 ---
 
@@ -193,30 +203,39 @@ When upgrading from compact to chained mode, the issuer creates a new chained to
 
 ## 6. Budget Semantics
 
-Budget fields (`budget_usd` in compact mode, `budget` facts in chained mode) represent **per-token authorization limits**, not running balances.
+Budget fields (`budget_usd` in compact mode, `budget_ceiling` facts in chained mode) represent **per-token authorization ceilings**, not running balances.
 
-### 6.1 Enforcement Model
+### 6.1 Declared and Verified
 
-Budget is enforced by the **delegator at delegation time** and the **verifier at invocation time**, not tracked across invocations:
+A ceiling is both declared and verified, and these are distinct operations:
 
-1. **At delegation time:** When Agent A delegates to Agent B with `budget:0.50`, Agent A is asserting "I authorize B to spend up to $0.50 on this task." Agent A is responsible for partitioning its own budget across sub-delegations.
+- **Declared** as a `budget_ceiling` fact, in integer cents, in the block that establishes it.
+- **Verified** structurally at every hop. A verifier MUST confirm each block's declared ceiling is non-negative and does not exceed the nearest ancestor that declares one. A block declaring no ceiling inherits its nearest ancestor's. This is step V4 of [AIP Verification](aip-verification.md).
 
-2. **At invocation time:** The verifier (MCP server, A2A receiver) checks that the declared budget in the token is non-negative. It does NOT track cumulative spend.
+### 6.2 Budget Is Not a Datalog Check
 
-3. **At completion time:** The completion block records actual `cost_usd` spent. This is for audit, not enforcement.
+Implementations MUST NOT express a budget ceiling as a Datalog check, and verifiers MUST NOT inject an ambient `budget` fact during policy evaluation.
 
-4. **Aggregate enforcement** is the responsibility of the runtime (e.g., an orchestration platform's cost tracking), not the token. AIP tokens authorize a ceiling; runtimes enforce the floor.
+A check of the form `check if budget($b), $b <= N` binds to whatever budget facts are in scope during evaluation, which is not the same question as whether this block's ceiling narrows its parent's. Encoding budget as a check therefore either rejects valid chains, or, if the verifier supplies a satisfying ambient fact, passes unconditionally. Both failure modes have been observed in practice between independent implementations of this specification.
 
-### 6.2 Analogy
+### 6.3 What the Token Does Not Do
+
+The token does not track cumulative spending. Nothing in a delegation chain records how much of a ceiling has been consumed, and a verifier evaluating a single request cannot know. Enforcement of actual spend against a ceiling is out of band and is the responsibility of the orchestration platform at dispatch time. Completion blocks record actual `cost_usd` for audit, which supports after-the-fact reconciliation but is not an authorization control.
+
+Implementations MUST NOT present ceiling verification as spend enforcement. A chain that verifies establishes that no hop authorized more than it held. It does not establish that the authorized amount remains available.
+
+### 6.4 Analogy
 
 This is analogous to a credit card authorization: the token says "authorized up to $X", the merchant checks the limit, but the bank (runtime) tracks the running balance.
 
-### 6.3 Requirements
+### 6.5 Requirements
 
-1. Budget values in delegation blocks MUST be less than or equal to the parent block's budget.
-2. Verifiers MUST check that the declared budget is non-negative.
-3. Verifiers MUST NOT track cumulative spend across invocations using the token alone.
-4. Completion blocks SHOULD record actual `cost_usd` for audit purposes.
+1. Budget ceilings in delegation blocks MUST be less than or equal to the nearest ancestor's ceiling.
+2. Verifiers MUST check that a declared ceiling is non-negative.
+3. Implementations MUST NOT emit a `check` statement over `budget`.
+4. Verifiers MUST NOT inject an ambient `budget` fact.
+5. Verifiers MUST NOT track cumulative spend across invocations using the token alone.
+6. Completion blocks SHOULD record actual `cost_usd` for audit purposes.
 
 ---
 
@@ -226,48 +245,68 @@ Datalog policies in chained mode blocks use one of three profiles. Policy profil
 
 ### 7.1 Simple Profile
 
-Templated rules requiring no Datalog knowledge. Users specify values and the library generates canonical Datalog. The canonical Datalog templates are normative: implementations MUST generate exactly these patterns.
+Templated rules requiring no Datalog knowledge. Users specify values and the library generates canonical Datalog. **The canonical forms are normative: implementations MUST emit exactly these patterns.** Interoperability depends on it, because two encodings that are individually defensible will not verify against each other.
 
-**Tool allowlist template:**
+**Authority block (block 0):**
+
 ```datalog
-check if tool($tool), ["search", "browse"].contains($tool);
+identity("<aip-identifier>");
+principal("<identifier>");          ; OPTIONAL, on-behalf-of party
+right("<scope>");                   ; one fact per granted scope
+max_depth(<n>);
+budget_ceiling(<cents>);            ; OPTIONAL, integer cents
+check if tool($t), ["<scope>", ...].contains($t);
+check if time($t), $t <= <expiry>;
 ```
 
-**Budget ceiling template:**
-```datalog
-check if budget($b), $b <= 0.50;
-```
+**Delegation block (blocks 1 through N):**
 
-**Delegation depth template:**
 ```datalog
-check if depth($d), $d <= 3;
-```
-
-**Time expiry template:**
-```datalog
-check if time($t), $t <= 2026-03-22T12:00:00Z;
+delegator("<aip-identifier>");
+delegate("<aip-identifier>");
+context("<non-empty string>");
+principal("<identifier>");          ; OPTIONAL, MUST match ancestor
+budget_ceiling(<cents>);            ; OPTIONAL, <= nearest ancestor
+check if tool($t), ["<scope>", ...].contains($t);
+check if time($t), $t <= <expiry>;  ; OPTIONAL, <= parent expiry
 ```
 
 **Requirements:**
 
-1. Implementations MUST generate exactly the canonical Datalog patterns shown above for Simple profile policies.
-2. The templates are fixed across implementations to ensure interoperability.
-3. Users specify configuration values (e.g., `tools: [search, browse], budget: 0.50, max_depth: 3`) and the library generates the canonical Datalog.
+1. Implementations MUST generate exactly these patterns for Simple profile policies.
+2. Users specify configuration values (e.g., `tools: [search, browse], budget: 50, max_depth: 3`) and the library generates the canonical Datalog.
+3. Implementations MUST NOT emit a `check` statement over `budget`. See Section 6.2.
+4. The Simple profile matches scopes by exact string equality. A scope containing `*` is matched literally and carries no pattern meaning in this profile. Deployments needing prefix matching MUST use the Standard profile.
 
 ### 7.2 Standard Profile
 
-Curated Datalog subset. No recursion. Bounded evaluation.
+Curated Datalog subset. No recursion. Bounded evaluation. The Standard profile adds pattern matching over scopes while keeping the same block facts as Section 7.1.
+
+**Scope patterns.** A scope ending in `*` is a prefix pattern. The canonical form joins an exact-match clause and one clause per pattern into a single check:
+
+```datalog
+check if tool($t), ["report:daily"].contains($t)
+     or tool($t), $t.starts_with("tool:");
+```
+
+A bare `*` becomes the clause `tool($t)`, which matches any scope.
+
+**Requirements:**
+
+1. The exact-match clause, if any, MUST come first, followed by one clause per pattern in the order the scopes were supplied.
+2. Standard profile policies MUST NOT use recursive rules.
+3. Evaluation MUST be bounded.
+4. **A block's scope constraint MUST be expressed as a single self-contained `check` statement.** Implementations MUST NOT encode scope as named rules shared across blocks.
+
+Requirement 4 is a security requirement, not a style preference. Biscuit rules defined in the authority block remain in scope when later blocks are evaluated. A delegation block that defines a narrower rule under a name the authority block already uses does not replace the authority's rule; the two are unioned, and the broader authority rule then satisfies the delegation block's own check. Scope encoded this way does not attenuate. A self-contained check has no such interaction, because conjunction across blocks is what narrows the authorized set.
+
+Other Standard profile policies may reference block facts directly:
 
 ```datalog
 check if tool($tool), delegator($d),
   trust_domain($d, $domain),
   ["research", "internal"].contains($domain);
 ```
-
-**Requirements:**
-
-1. Standard profile policies MUST NOT use recursive rules.
-2. Evaluation MUST be bounded.
 
 ### 7.3 Advanced Profile
 
