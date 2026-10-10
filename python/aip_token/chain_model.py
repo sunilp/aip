@@ -62,6 +62,12 @@ def verify_links(links: list[Link], now: int) -> Link:
     if root.max_depth is None or root.max_depth < 0:
         raise TokenError.token_malformed("authority link declares no max_depth")
 
+    for index, link in enumerate(links):
+        if link.tools == frozenset():
+            raise TokenError.token_malformed(f"link {index} declares an empty tools list")
+        if link.domains == frozenset():
+            raise TokenError.token_malformed(f"link {index} declares an empty domains list")
+
     # V3
     if len(links) - 1 > root.max_depth:
         raise TokenError.depth_exceeded()

@@ -303,3 +303,33 @@ def test_cnf_x_must_be_strict_base64url(keys):
     with pytest.raises(TokenError) as e:
         JwtChain.verify(token, keys["root"].public_key_bytes())
     assert code(e) == "token_malformed"
+
+
+@pytest.mark.parametrize("field", ["tools", "domains"])
+def test_mint_rejects_empty_allowlist(keys, field):
+    with pytest.raises(TokenError) as e:
+        make_chain(keys, **{field: []})
+    assert code(e) == "token_malformed"
+    root = JwtChain.create_root(
+        issuer=ROOT_ID, delegate=B_ID, tools=["tool:search"], max_depth=2,
+        ttl_seconds=600, issuer_keypair=keys["root"],
+        holder_public_key=keys["b"].public_key_bytes(), domains=["a.com"])
+    with pytest.raises(TokenError) as e:
+        root.append(holder_keypair=keys["b"], delegate=C_ID,
+                    next_holder_public_key=keys["c"].public_key_bytes(),
+                    context="x", **{field: []})
+    assert code(e) == "token_malformed"
+
+
+def test_forged_empty_domains_link_rejected(keys):
+    root = JwtChain.create_root(
+        issuer=ROOT_ID, delegate=B_ID, tools=["tool:search"], max_depth=2,
+        ttl_seconds=600, issuer_keypair=keys["root"],
+        holder_public_key=keys["b"].public_key_bytes(), domains=["a.com"])
+    first = root.serialize()
+    forged = forge_link(first, keys["b"], {
+        "iss": B_ID, "sub": C_ID, "aip_ctx": "x", "aip_domains": [],
+        "cnf": {"jwk": holder_jwk(keys["c"].public_key_bytes())}})
+    with pytest.raises(TokenError) as e:
+        JwtChain.verify(f"{first}~{forged}", keys["root"].public_key_bytes())
+    assert code(e) == "token_malformed"

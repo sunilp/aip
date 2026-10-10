@@ -110,6 +110,19 @@ def _parse_str_fact(source: str, name: str) -> str | None:
 _TIME_CHECK = re.compile(r"^check if time\(\$t\), \$t <= (\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ);", re.M)
 
 
+_SINGLE_STR = ("identity", "delegator", "delegate", "context", "principal")
+_SINGLE_INT = ("budget_ceiling", "max_depth")
+
+
+def _reject_duplicate_facts(source: str, index: int) -> None:
+    for name in _SINGLE_STR:
+        if len(re.findall(rf'^{name}\("', source, re.M)) > 1:
+            raise TokenError.token_malformed(f"block {index} repeats the {name} fact")
+    for name in _SINGLE_INT:
+        if len(re.findall(rf"^{name}\(-?\d+\);", source, re.M)) > 1:
+            raise TokenError.token_malformed(f"block {index} repeats the {name} fact")
+
+
 def _parse_str_facts(source: str, name: str) -> list[str]:
     return re.findall(rf'^{name}\("([^"]*)"\);', source, re.M)
 
@@ -181,6 +194,10 @@ class ChainedToken:
         """Create a new authority (root) token."""
         if budget_cents is not None and budget_cents < 0:
             raise TokenError("budget ceiling must be non-negative", "budget_exceeded")
+        if not scopes:
+            raise TokenError.token_malformed("authority declares an empty tools list")
+        if domains is not None and not domains:
+            raise TokenError.token_malformed("authority declares an empty domains list")
 
         expiry = datetime.now(tz=timezone.utc) + timedelta(seconds=ttl_seconds)
 
@@ -245,6 +262,8 @@ class ChainedToken:
                     "budget_exceeded",
                 )
 
+        if domains is not None and not domains:
+            raise TokenError.token_malformed("delegation declares an empty domains list")
         if domains is not None:
             parent_domains = self._effective_domains()
             if parent_domains is not None:
@@ -319,7 +338,7 @@ class ChainedToken:
 
         # V6: policy evaluation. Ambient facts are tool, time and depth only.
         # Supplying a budget fact here would make any budget check evaluate
-        # against verifier-chosen data; budget is handled in V4.
+        # against verifier-chosen data; budget is handled in chain_model.verify_links.
         #
         # The requested tool is the one input to this step that the caller
         # controls, and in an MCP binding it arrives straight from the agent's
@@ -351,8 +370,8 @@ class ChainedToken:
         """The most recent allowlist declared in the chain, or None if unconstrained.
 
         The last declaration is the narrowest: every block that declares scopes
-        was checked against its parent when it was appended and again in the
-        attenuation walk, so a later declaration can only be a subset.
+        was checked against its parent when it was appended and again in
+        chain_model.verify_links, so a later declaration can only be a subset.
         """
         scopes = None
         for i in range(self.block_count()):
@@ -378,6 +397,13 @@ class ChainedToken:
                 domains = set(block_domains)
         return domains
 
+    # Invariant the parsers rely on: each dimension is enforced in exactly one
+    # place. Tools and time are enforced by the Datalog checks in every block.
+    # Domains and budget are enforced only by the parsed facts, which
+    # verify_links subset-checks. So hiding a fact from the parser can only
+    # fall back to inheriting the parent's value, never widen it. Biscuit
+    # prints string literals unescaped, so honest minting depends on
+    # validate_term (via str_fact) rejecting terms that could break out.
     def links(self) -> list[Link]:
         """Parse the chain into the encoding-neutral link model.
 
@@ -389,6 +415,7 @@ class ChainedToken:
         out: list[Link] = []
         for index in range(self.block_count()):
             source = self.block_source(index)
+            _reject_duplicate_facts(source, index)
             scopes = _parse_scopes(source)
             domains = _parse_str_facts(source, "domain")
             out.append(Link(

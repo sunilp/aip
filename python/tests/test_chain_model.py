@@ -134,3 +134,19 @@ def test_authorize_request():
 def test_wire_code_prefixes_once():
     assert TokenError("x", "scope_insufficient").wire_code == "aip_scope_insufficient"
     assert TokenError("x", "aip_scope_insufficient").wire_code == "aip_scope_insufficient"
+
+
+@pytest.mark.parametrize("field", ["tools", "domains"])
+def test_empty_allowlist_on_root_is_malformed(field):
+    with pytest.raises(TokenError) as e:
+        verify_links([root(**{field: frozenset()})], NOW)
+    assert e.value.code == "token_malformed"
+
+
+@pytest.mark.parametrize("field", ["tools", "domains"])
+def test_empty_allowlist_on_hop_is_malformed(field):
+    hop = Link(issuer="aip:web:b.example", delegate="aip:web:c.example",
+               context="x", **{field: frozenset()})
+    with pytest.raises(TokenError) as e:
+        verify_links([root(domains=frozenset({"a.com"})), hop], NOW)
+    assert e.value.code == "token_malformed"

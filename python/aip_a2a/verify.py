@@ -83,7 +83,7 @@ def verify_a2a_task(
         )
 
     # Scope check: ChainedToken.authorize() runs the verification algorithm in
-    # draft-prakash-aip-01 Section 4, which re-verifies every block signature
+    # draft-prakash-aip-02 Section 4, which re-verifies every block signature
     # and walks the chain confirming each hop narrows its parent.
     try:
         token.authorize(required_scope, root_public_key_bytes)

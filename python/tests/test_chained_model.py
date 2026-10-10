@@ -55,3 +55,53 @@ def test_domain_is_a_fact_not_a_check():
     src = authority(kp).block_source(0)
     assert 'domain("a.com");' in src
     assert "check if domain" not in src
+
+
+from biscuit_auth import BlockBuilder  # noqa: E402
+
+
+def forged(kp, block_src):
+    tok = authority(kp)
+    new = tok._biscuit.append(BlockBuilder(block_src))
+    return ChainedToken.from_base64(new.to_base64(), kp.public_key_bytes())
+
+
+BASE = 'delegator("a");\ndelegate("b");\ncontext("x");\n'
+
+
+def verify_code(kp, src):
+    with pytest.raises(TokenError) as e:
+        forged(kp, src).verify_chain(kp.public_key_bytes())
+    return e.value.code
+
+
+def test_forged_domain_widening():
+    kp = KeyPair.generate()
+    assert verify_code(kp, BASE + 'domain("evil.com");\n') == "scope_insufficient"
+
+
+def test_forged_extended_expiry():
+    kp = KeyPair.generate()
+    assert verify_code(
+        kp, BASE + "check if time($t), $t <= 2999-01-01T00:00:00Z;\n") == "token_expired"
+
+
+def test_forged_max_depth_in_delegation_block():
+    kp = KeyPair.generate()
+    assert verify_code(kp, BASE + "max_depth(9);\n") == "token_malformed"
+
+
+def test_forged_duplicate_budget_fact():
+    kp = KeyPair.generate()
+    assert verify_code(kp, BASE + "budget_ceiling(1);\nbudget_ceiling(2);\n") == "token_malformed"
+
+
+def test_mint_rejects_empty_lists():
+    kp = KeyPair.generate()
+    for kw in ({"scopes": []}, {"domains": []}):
+        with pytest.raises(TokenError) as e:
+            authority(kp, **kw)
+        assert e.value.code == "token_malformed"
+    with pytest.raises(TokenError) as e:
+        authority(kp).delegate(ROOT, "aip:web:b.example", ["tool:search"], None, "x", domains=[])
+    assert e.value.code == "token_malformed"
