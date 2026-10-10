@@ -1,5 +1,6 @@
 from aip_token.compact import CompactToken
 from aip_token.error import TokenError
+from aip_token.jwt_chain import JwtChain, detect_format
 
 def extract_token(headers: dict) -> str | None:
     """Extract AIP token from headers. Case-insensitive."""
@@ -9,10 +10,9 @@ def extract_token(headers: dict) -> str | None:
     return None
 
 def detect_mode(token: str) -> str:
-    """Detect compact (JWT) or chained (Biscuit) mode."""
-    if token.startswith("eyJ"):
-        return "compact"
-    return "chained"
+    """Detect the token encoding: "jwt-chain", "compact" (legacy) or "chained" (Biscuit)."""
+    fmt = detect_format(token)
+    return "chained" if fmt == "biscuit" else fmt
 
 def verify_request(headers: dict, public_key_bytes: bytes, required_scope: str):
     """Verify AIP token from request headers.
@@ -29,6 +29,11 @@ def verify_request(headers: dict, public_key_bytes: bytes, required_scope: str):
         raise TokenError("No AIP token provided", "aip_token_missing")
 
     mode = detect_mode(token_str)
+
+    if mode == "jwt-chain":
+        chain = JwtChain.verify(token_str, bytes(public_key_bytes))
+        chain.authorize(required_scope)
+        return chain
 
     if mode == "compact":
         verified = CompactToken.verify(token_str, public_key_bytes)

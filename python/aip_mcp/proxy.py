@@ -17,7 +17,7 @@ import httpx
 from aip_core.crypto import KeyPair
 from aip_mcp.middleware import extract_token, detect_mode
 from aip_mcp.error import aip_error_response
-from aip_mcp.audit import audit_compact, audit_chained, AuditResult
+from aip_mcp.audit import audit_compact, audit_chained, audit_jwt_chain, AuditResult
 from aip_mcp.config import ProxyConfig
 from aip_mcp.request import parse_mcp_request
 from aip_token.error import TokenError
@@ -172,6 +172,19 @@ class _ProxyHandler(BaseHTTPRequestHandler):
 
         for issuer, pub_key in anchors.items():
             try:
+                if mode == "jwt-chain":
+                    from aip_token.jwt_chain import JwtChain
+
+                    token = JwtChain.verify(token_str, bytes(pub_key))
+                    self._bind_root(issuer, token.issuer())
+                    if required_scope is not None:
+                        token.authorize(required_scope)
+                    return token, audit_jwt_chain(
+                        token,
+                        max_depth=config.max_depth,
+                        max_budget_cents=int(config.max_budget_usd * 100),
+                    )
+
                 if mode == "compact":
                     from aip_token.compact import CompactToken
 

@@ -57,11 +57,33 @@ def verify_a2a_task(
         ScopeError: required scope not authorized at any chain depth.
         ExpiryError: token expired.
     """
-    from aip_token.chained import ChainedToken  # lazy: biscuit-python is optional dep
-
     token_str = extract_token_from_task(body)
     if not token_str:
         raise ChainError("missing aip_token in task metadata")
+
+    from aip_token.jwt_chain import JwtChain, detect_format
+
+    if detect_format(token_str) == "jwt-chain":
+        try:
+            chain = JwtChain.verify(token_str, bytes(root_public_key_bytes))
+        except TokenError as exc:
+            if exc.code in ("token_expired", "aip_token_expired"):
+                raise ExpiryError() from exc
+            raise ChainError(str(exc)) from exc
+        if chain.depth() < 1:
+            raise ChainError("expected at least one delegation block in chain")
+        if chain.leaf_delegate() != expected_audience:
+            raise AudienceError(
+                f"final delegation targets {chain.leaf_delegate()!r}, expected {expected_audience!r}"
+            )
+        try:
+            chain.authorize(required_scope)
+        except TokenError as exc:
+            raise ScopeError(required_scope) from exc
+        return VerifiedIdentity(subject=expected_audience, chain_depth=chain.depth(),
+                                issuer=chain.issuer())
+
+    from aip_token.chained import ChainedToken  # lazy: biscuit-python is optional dep
 
     try:
         token = ChainedToken.from_base64(token_str, root_public_key_bytes)

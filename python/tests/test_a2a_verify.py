@@ -153,3 +153,37 @@ def test_verify_rejects_attenuated_away_scope():
             root_public_key_bytes=root_kp.public_key_bytes(),
             required_scope="research:write",
         )
+
+
+# --- JWT chain encoding -----------------------------------------------------
+
+def _jwt_one_hop(orchestrator_id, researcher_id, tools):
+    from aip_token.jwt_chain import JwtChain
+
+    root_kp, holder_kp, leaf_kp = KeyPair.generate(), KeyPair.generate(), KeyPair.generate()
+    root = JwtChain.create_root(
+        issuer=orchestrator_id, delegate="aip:web:acme.com/broker", tools=tools,
+        max_depth=2, ttl_seconds=3600, issuer_keypair=root_kp,
+        holder_public_key=holder_kp.public_key_bytes(), budget_cents=200,
+    )
+    chain = root.append(
+        holder_keypair=holder_kp, delegate=researcher_id,
+        next_holder_public_key=leaf_kp.public_key_bytes(), context="task-1",
+    )
+    return chain.serialize(), root_kp
+
+
+def test_verify_jwt_chain_success():
+    orchestrator = "aip:web:acme.com/orchestrator"
+    researcher = "aip:web:acme.com/researcher"
+    token, root_kp = _jwt_one_hop(orchestrator, researcher, ["research:read"])
+    body = {"params": {"metadata": {"aip_token": token}}}
+    result = verify_a2a_task(
+        body,
+        expected_audience=researcher,
+        root_public_key_bytes=root_kp.public_key_bytes(),
+        required_scope="research:read",
+    )
+    assert result.subject == researcher
+    assert result.chain_depth == 1
+    assert result.issuer == orchestrator
