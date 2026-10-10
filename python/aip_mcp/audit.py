@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from aip_token.compact import CompactToken
     from aip_token.chained import ChainedToken
+    from aip_token.jwt_chain import JwtChain
 
 # Thresholds (configurable via proxy config, these are defaults)
 MAX_TTL_SECONDS = 3600        # 1 hour
@@ -137,3 +138,35 @@ def audit_chained(
 
     passed = len(errors) == 0
     return AuditResult(passed=passed, warnings=warnings, errors=errors)
+
+
+def audit_jwt_chain(
+    token: "JwtChain",
+    max_depth: int | None = None,
+    max_budget_cents: int | None = None,
+) -> AuditResult:
+    """Deployment-policy audit of a verified JWT chain. Same rules as audit_chained."""
+    warnings: list[str] = []
+    errors: list[str] = []
+    root = token.links[0]
+
+    declared_depth = root.max_depth or 0
+    if max_depth is not None and declared_depth > max_depth:
+        errors.append(f"Max delegation depth {declared_depth} exceeds the configured limit of {max_depth}")
+    elif declared_depth > MAX_SAFE_DEPTH:
+        warnings.append(f"Max delegation depth {declared_depth} exceeds recommended maximum of {MAX_SAFE_DEPTH}")
+
+    cents = root.budget_cents
+    if cents is not None:
+        if max_budget_cents is not None and cents > max_budget_cents:
+            errors.append(
+                f"Authority budget {cents} cents (${cents / 100:.2f}) exceeds the configured "
+                f"limit of ${max_budget_cents / 100:.2f}"
+            )
+        elif cents > HIGH_BUDGET_CENTS:
+            warnings.append(
+                f"Authority budget {cents} cents (${cents / 100:.2f}) exceeds recommended "
+                f"maximum of ${HIGH_BUDGET_CENTS / 100:.2f}"
+            )
+
+    return AuditResult(passed=not errors, warnings=warnings, errors=errors)

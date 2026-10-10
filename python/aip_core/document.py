@@ -70,11 +70,16 @@ class IdentityDocument(BaseModel):
         if not self.public_keys:
             raise SignatureInvalid("no public keys in document")
 
-        # Decode the base64 signature
+        # Section 2.3: the signature is base64url without padding. Standard
+        # base64 is still accepted because earlier Python releases wrote it.
+        sig = self.document_signature
         try:
-            sig_bytes = base64.b64decode(self.document_signature)
+            if "+" in sig or "/" in sig:
+                sig_bytes = base64.b64decode(sig + "=" * (-len(sig) % 4))
+            else:
+                sig_bytes = base64.urlsafe_b64decode(sig + "=" * (-len(sig) % 4))
         except Exception as exc:
-            raise SignatureInvalid(f"invalid base64 signature: {exc}") from exc
+            raise SignatureInvalid(f"invalid base64url signature: {exc}") from exc
 
         # Get the first public key
         key_entry = self.public_keys[0]

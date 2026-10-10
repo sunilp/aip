@@ -1,4 +1,8 @@
-"""Compact token format: JWT with EdDSA (Ed25519) signatures."""
+"""Compact token format: JWT with EdDSA (Ed25519) signatures.
+
+Deprecated by draft-prakash-aip-02, which describes compact mode as a one-link
+JWT chain (aip_token.jwt_chain). JwtChain.verify still accepts these tokens.
+"""
 
 from __future__ import annotations
 
@@ -49,6 +53,12 @@ class CompactToken:
         Returns a ``CompactToken`` with the decoded claims on success.
         Raises ``TokenError`` on any failure (expired, bad signature, malformed).
         """
+        try:
+            header = jwt.get_unverified_header(token_str)
+        except Exception as exc:
+            raise TokenError.token_malformed(str(exc))
+        if header.get("typ") != "aip+jwt":
+            raise TokenError.token_malformed("compact token typ must be aip+jwt")
         try:
             public_key = Ed25519PublicKey.from_public_bytes(public_key_bytes)
             payload = jwt.decode(

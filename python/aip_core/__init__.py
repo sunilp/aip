@@ -10,4 +10,4 @@ from aip_core.error import (
     VersionUnsupported,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.6.0"

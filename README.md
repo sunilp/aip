@@ -109,7 +109,7 @@ Benchmarked on compact and chained token operations (1000 iterations):
 | Token size (compact) | 356 bytes | 356 bytes |
 | Token growth per hop | +340 bytes | +388 bytes |
 
-End-to-end overhead for a 2-hop delegation: AIP adds ~2.3 ms vs OAuth's ~20 ms (token exchange simulation). 100% rejection rate on unauthorized token operations across 100 attack scenarios. 285 tests passing across both languages (205 Python, 80 Rust, as of 0.5.0).
+End-to-end overhead for a 2-hop delegation: AIP adds ~2.3 ms vs OAuth's ~20 ms (token exchange simulation). 100% rejection rate on unauthorized token operations across 100 attack scenarios. 391 tests passing across both languages (311 Python, 80 Rust, as of 0.6.0).
 
 Full benchmark code in `paper/benchmarks/`.
 
@@ -146,6 +146,40 @@ delegated = token.delegate(
 delegated.authorize("tool:search", root_kp.public_key_bytes())  # passes
 delegated.authorize("tool:email", root_kp.public_key_bytes())   # raises
 ```
+
+The same chain as a JWT chain (`application/aip-chain+jwt`). Each link is signed by the previous link's holder key:
+
+```python
+from aip_core.crypto import KeyPair
+from aip_token.jwt_chain import JwtChain
+
+root_kp, orchestrator_kp, specialist_kp = KeyPair.generate(), KeyPair.generate(), KeyPair.generate()
+
+chain = JwtChain.create_root(
+    issuer="aip:web:myorg.com/root",
+    delegate="aip:web:myorg.com/orchestrator",
+    tools=["tool:search", "tool:email"],
+    max_depth=3,
+    ttl_seconds=3600,
+    issuer_keypair=root_kp,
+    holder_public_key=orchestrator_kp.public_key_bytes(),
+    budget_cents=500,
+)
+delegated = chain.append(
+    holder_keypair=orchestrator_kp,
+    delegate="aip:web:myorg.com/specialist",
+    next_holder_public_key=specialist_kp.public_key_bytes(),
+    context="research task for user query",
+    tools=["tool:search"],
+    budget_cents=100,
+)
+
+verified = JwtChain.verify(delegated.serialize(), root_kp.public_key_bytes())
+verified.authorize("tool:search")  # passes
+verified.authorize("tool:email")   # raises TokenError (aip_scope_insufficient)
+```
+
+Note: any prefix of a valid JWT chain also verifies and carries an earlier holder's wider authority. The MCP proxy, middleware and A2A verifier do not verify proof of possession, so they treat JWT chains as bearer-equivalent to the root grant. Biscuit chains are not affected. Two other limits: the JWT verifier does not check that a link's `cnf` key belongs to its `sub` identifier, and V7 revocation is not implemented. See Known limitations in CHANGELOG.md.
 
 ## A2A Integration
 
