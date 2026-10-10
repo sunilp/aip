@@ -297,9 +297,44 @@ class JwtChain:
 
     @staticmethod
     def _verify_legacy(segment: str, root_public_key_bytes: bytes, now: int) -> JwtChain:
-        """Accept a -01 compact token as a one-link chain. Deprecated in -02."""
-        raise TokenError.token_malformed("legacy compact tokens are handled in Task 3")
+        """Accept a -01 compact token as a one-link chain. Deprecated in -02.
+
+        CompactToken.verify does V1 (and rejects an expired token itself); the
+        claims are then mapped onto the link model so V3-V6 are shared.
+        """
+        from aip_token.compact import CompactToken
+
+        claims = CompactToken.verify(segment, root_public_key_bytes).claims
+        link = Link(
+            issuer=claims.iss,
+            delegate=claims.sub,
+            tools=frozenset(claims.scope),
+            budget_cents=None if claims.budget_usd is None else round(claims.budget_usd * 100),
+            expiry=claims.exp,
+            max_depth=claims.max_depth,
+        )
+        chain = JwtChain([segment], [claims.model_dump()], [link])
+        chain._effective = verify_links([link], now)
+        return chain
 
     def authorize(self, tool: str, domain: str | None = None) -> None:
         """V6 for the JWT encoding: the request must fall inside the leaf's authority."""
         authorize_request(self.effective, tool, domain)
+
+
+def detect_format(token: str) -> str:
+    """Which encoding is this token? "jwt-chain", "compact" (legacy) or "biscuit".
+
+    Biscuit tokens are base64url protobuf and never start with "eyJ", the
+    base64url of '{"'. A JWS header is read without verification only to
+    choose the verifier; nothing in it is trusted.
+    """
+    if not token.startswith("eyJ"):
+        return "biscuit"
+    if SEPARATOR in token:
+        return "jwt-chain"
+    try:
+        typ = jwt.get_unverified_header(token).get("typ")
+    except jwt.PyJWTError:
+        return "compact"
+    return "jwt-chain" if typ == LINK_TYP else "compact"

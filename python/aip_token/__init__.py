@@ -4,6 +4,7 @@ from aip_token.claims import AipClaims
 from aip_token.compact import CompactToken
 from aip_token.delegation import DelegationBlock
 from aip_token.error import TokenError
+from aip_token.jwt_chain import JwtChain
 from aip_token.policy import SimplePolicy
 
 try:
@@ -16,6 +17,7 @@ __all__ = [
     "ChainedToken",
     "CompactToken",
     "DelegationBlock",
+    "JwtChain",
     "SimplePolicy",
     "TokenError",
 ]

@@ -1,4 +1,8 @@
-"""Compact token format: JWT with EdDSA (Ed25519) signatures."""
+"""Compact token format: JWT with EdDSA (Ed25519) signatures.
+
+Deprecated by draft-prakash-aip-02, which describes compact mode as a one-link
+JWT chain (aip_token.jwt_chain). JwtChain.verify still accepts these tokens.
+"""
 
 from __future__ import annotations
 
