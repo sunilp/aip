@@ -123,6 +123,13 @@ def _reject_duplicate_facts(source: str, index: int) -> None:
             raise TokenError.token_malformed(f"block {index} repeats the {name} fact")
 
 
+def _require_parties(source: str, index: int) -> None:
+    required = ("identity",) if index == 0 else ("delegator", "delegate")
+    for name in required:
+        if not re.search(rf'^{name}\("', source, re.M):
+            raise TokenError.token_malformed(f"block {index} has no {name} fact")
+
+
 def _parse_str_facts(source: str, name: str) -> list[str]:
     return re.findall(rf'^{name}\("([^"]*)"\);', source, re.M)
 
@@ -416,6 +423,7 @@ class ChainedToken:
         for index in range(self.block_count()):
             source = self.block_source(index)
             _reject_duplicate_facts(source, index)
+            _require_parties(source, index)
             scopes = _parse_scopes(source)
             domains = _parse_str_facts(source, "domain")
             out.append(Link(

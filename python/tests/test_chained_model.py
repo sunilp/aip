@@ -105,3 +105,25 @@ def test_mint_rejects_empty_lists():
     with pytest.raises(TokenError) as e:
         authority(kp).delegate(ROOT, "aip:web:b.example", ["tool:search"], None, "x", domains=[])
     assert e.value.code == "token_malformed"
+
+
+def test_forged_block_without_delegator_or_delegate():
+    kp = KeyPair.generate()
+    assert verify_code(kp, 'context("work");\n') == "token_malformed"
+
+
+def test_forged_block_without_delegate():
+    kp = KeyPair.generate()
+    assert verify_code(kp, 'delegator("a");\ncontext("x");\n') == "token_malformed"
+
+
+def test_forged_block_without_delegator():
+    kp = KeyPair.generate()
+    assert verify_code(kp, 'delegate("b");\ncontext("x");\n') == "token_malformed"
+
+
+def test_authority_without_identity_rejected():
+    from aip_token import chained
+    with pytest.raises(TokenError) as e:
+        chained._require_parties('scope("x");\n', 0)
+    assert e.value.code == "token_malformed"
