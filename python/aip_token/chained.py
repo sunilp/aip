@@ -3,7 +3,7 @@
 Bridges AIP's Ed25519 key pairs with biscuit-python to provide
 cryptographically attenuated delegation chains.
 
-Block layout follows the canonical encoding in draft-prakash-aip-01
+Block layout follows the canonical encoding in draft-prakash-aip-02
 Section 3.4.1, and verification follows the algorithm in Section 4. Both are
 normative: an implementation that encodes the same intent differently produces
 tokens no other implementation can verify.
@@ -12,6 +12,7 @@ tokens no other implementation can verify.
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 from biscuit_auth import (
@@ -34,6 +35,8 @@ from aip_token.canonical import (
     tool_check,
     validate_term,
 )
+from aip_token.chain_model import Link, authorize_request, verify_links
+from aip_token.chain_model import covers as _covers
 from aip_token.error import TokenError
 
 # biscuit-python >= 0.4 requires an Algorithm argument for from_bytes();
@@ -63,21 +66,6 @@ def _biscuit_public_key(raw_bytes: bytes) -> BiscuitPublicKey:
 
 # Canonical block encoding lives in aip_token.canonical so that the chained
 # builder and the standalone SimplePolicy renderer cannot drift apart.
-
-
-def _covers(pattern: str, scope: str) -> bool:
-    """Does a parent scope pattern permit a child scope?
-
-    A wildcard in the parent permits any specific value in the child. A
-    specific value in the parent never widens to a wildcard in the child.
-    """
-    if pattern == scope:
-        return True
-    if pattern == "*":
-        return True
-    if pattern.endswith("*"):
-        return scope.startswith(pattern[:-1])
-    return False
 
 
 def _parse_scopes(source: str) -> set[str] | None:
@@ -119,6 +107,21 @@ def _parse_str_fact(source: str, name: str) -> str | None:
     return match.group(1) if match else None
 
 
+_TIME_CHECK = re.compile(r"^check if time\(\$t\), \$t <= (\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ);", re.M)
+
+
+def _parse_str_facts(source: str, name: str) -> list[str]:
+    return re.findall(rf'^{name}\("([^"]*)"\);', source, re.M)
+
+
+def _parse_expiry(source: str) -> int | None:
+    match = _TIME_CHECK.search(source)
+    if not match:
+        return None
+    stamp = datetime.strptime(match.group(1), "%Y-%m-%dT%H:%M:%SZ")
+    return int(stamp.replace(tzinfo=timezone.utc).timestamp())
+
+
 class ChainedToken:
     """A Biscuit-based chained delegation token.
 
@@ -139,6 +142,7 @@ class ChainedToken:
         self._max_depth = max_depth
         self._root_pubkey_bytes = root_pubkey_bytes
         self._depth = depth
+        self._effective: Link | None = None
 
     # -- accessors ---------------------------------------------------------
 
@@ -172,6 +176,7 @@ class ChainedToken:
         ttl_seconds: int,
         keypair: KeyPair,
         principal: str | None = None,
+        domains: list[str] | None = None,
     ) -> ChainedToken:
         """Create a new authority (root) token."""
         if budget_cents is not None and budget_cents < 0:
@@ -184,6 +189,8 @@ class ChainedToken:
             facts += str_fact("principal", principal)
         for scope in scopes:
             facts += str_fact("right", scope)
+        for domain in domains or []:
+            facts += str_fact("domain", domain)
         facts += int_fact("max_depth", max_depth)
         if budget_cents is not None:
             facts += int_fact("budget_ceiling", budget_cents)
@@ -202,6 +209,7 @@ class ChainedToken:
         budget_cents: int | None,
         context: str,
         principal: str | None = None,
+        domains: list[str] | None = None,
     ) -> ChainedToken:
         """Append an attenuated delegation block.
 
@@ -237,9 +245,21 @@ class ChainedToken:
                     "budget_exceeded",
                 )
 
+        if domains is not None:
+            parent_domains = self._effective_domains()
+            if parent_domains is not None:
+                widened = sorted(set(domains) - parent_domains)
+                if widened:
+                    raise TokenError(
+                        f"delegation would widen domains: {', '.join(widened)}",
+                        "scope_insufficient",
+                    )
+
         block = str_fact("delegator", delegator)
         block += str_fact("delegate", delegate)
         block += str_fact("context", context)
+        for domain in domains or []:
+            block += str_fact("domain", domain)
         if principal is not None:
             block += str_fact("principal", principal)
         if budget_cents is not None:
@@ -256,7 +276,7 @@ class ChainedToken:
             depth=self._depth + 1,
         )
 
-    # -- verification (draft-prakash-aip-01 Section 4) ---------------------
+    # -- verification (draft-prakash-aip-02 Section 4) ---------------------
 
     def verify_chain(self, root_public_key_bytes: bytes) -> Biscuit:
         """Verify the chain without evaluating a tool-specific policy.
@@ -282,17 +302,14 @@ class ChainedToken:
             self._biscuit.to_base64(), _biscuit_public_key(root_public_key_bytes)
         )
 
-        # V3: depth
-        declared_depth = _parse_int_fact(self.block_source(0), "max_depth")
-        if declared_depth is not None and self.block_count() - 1 > declared_depth:
-            raise TokenError("Delegation depth exceeded", "depth_exceeded")
-
-        # V4 and V5
-        self._attenuation_walk()
+        # V3, V4, V5 on the shared link model.
+        self._effective = verify_links(self.links(), int(time.time()))
 
         return verified
 
-    def authorize(self, tool: str, root_public_key_bytes: bytes) -> None:
+    def authorize(
+        self, tool: str, root_public_key_bytes: bytes, domain: str | None = None
+    ) -> None:
         """Verify the chain and authorize one tool invocation.
 
         Runs V1, V3, V4, V5 via :meth:`verify_chain`, then V6 (policy
@@ -326,63 +343,9 @@ class ChainedToken:
         except Exception as exc:
             raise TokenError(f"insufficient scope: {exc}", "scope_insufficient") from exc
 
-    def _attenuation_walk(self) -> None:
-        """V4: confirm every hop narrows its parent. V5: context is present."""
-        sources = [self.block_source(i) for i in range(self.block_count())]
-
-        scopes = _parse_scopes(sources[0])
-        budget = _parse_int_fact(sources[0], "budget_ceiling")
-        principal = _parse_str_fact(sources[0], "principal")
-
-        if budget is not None and budget < 0:
-            raise TokenError("budget ceiling must be non-negative", "budget_exceeded")
-
-        for index, source in enumerate(sources[1:], start=1):
-            # V5: every delegation block carries a non-empty context.
-            context = _parse_str_fact(source, "context")
-            if not context or not context.strip():
-                raise TokenError(
-                    f"delegation block {index} has no context", "token_malformed"
-                )
-
-            block_scopes = _parse_scopes(source)
-            if block_scopes is not None:
-                if scopes is not None:
-                    widened = [
-                        s for s in block_scopes if not any(_covers(p, s) for p in scopes)
-                    ]
-                    if widened:
-                        raise TokenError(
-                            f"delegation block {index} widens scope: "
-                            f"{', '.join(sorted(widened))}",
-                            "scope_insufficient",
-                        )
-                scopes = block_scopes
-
-            block_budget = _parse_int_fact(source, "budget_ceiling")
-            if block_budget is not None:
-                if block_budget < 0:
-                    raise TokenError(
-                        f"delegation block {index} has a negative budget ceiling",
-                        "budget_exceeded",
-                    )
-                if budget is not None and block_budget > budget:
-                    raise TokenError(
-                        f"delegation block {index} raises the budget ceiling from "
-                        f"{budget} to {block_budget}",
-                        "budget_exceeded",
-                    )
-                budget = block_budget
-
-            block_principal = _parse_str_fact(source, "principal")
-            if block_principal is not None:
-                if principal is not None and block_principal != principal:
-                    raise TokenError(
-                        f"delegation block {index} substitutes the principal: "
-                        f"{principal} became {block_principal}",
-                        "token_malformed",
-                    )
-                principal = block_principal
+        # V6, structural part: tools are already enforced by the Datalog checks
+        # above; domains are facts only, so they are checked here.
+        authorize_request(self._effective, tool, domain)
 
     def _effective_scopes(self) -> set[str] | None:
         """The most recent allowlist declared in the chain, or None if unconstrained.
@@ -406,6 +369,47 @@ class ChainedToken:
             if block_budget is not None:
                 budget = block_budget if budget is None else min(budget, block_budget)
         return budget
+
+    def _effective_domains(self) -> set[str] | None:
+        domains = None
+        for i in range(self.block_count()):
+            block_domains = _parse_str_facts(self.block_source(i), "domain")
+            if block_domains:
+                domains = set(block_domains)
+        return domains
+
+    def links(self) -> list[Link]:
+        """Parse the chain into the encoding-neutral link model.
+
+        Only meaningful after V1. Block 0 has no delegate in this encoding,
+        and delegator/delegate in later blocks are asserted, not
+        authenticated, because biscuit appends them under ephemeral keys
+        (draft-prakash-aip-02 Section 5.2).
+        """
+        out: list[Link] = []
+        for index in range(self.block_count()):
+            source = self.block_source(index)
+            scopes = _parse_scopes(source)
+            domains = _parse_str_facts(source, "domain")
+            out.append(Link(
+                issuer=(_parse_str_fact(source, "identity") if index == 0
+                        else _parse_str_fact(source, "delegator")) or "",
+                delegate=None if index == 0 else _parse_str_fact(source, "delegate"),
+                tools=frozenset(scopes) if scopes is not None else None,
+                domains=frozenset(domains) if domains else None,
+                budget_cents=_parse_int_fact(source, "budget_ceiling"),
+                expiry=_parse_expiry(source),
+                context=None if index == 0 else _parse_str_fact(source, "context"),
+                principal=_parse_str_fact(source, "principal"),
+                max_depth=_parse_int_fact(source, "max_depth"),
+            ))
+        return out
+
+    @property
+    def effective(self) -> Link:
+        if self._effective is None:
+            raise TokenError.token_malformed("chain has not been verified")
+        return self._effective
 
     # -- deserialization ---------------------------------------------------
 
