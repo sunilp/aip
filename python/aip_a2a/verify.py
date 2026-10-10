@@ -1,6 +1,12 @@
 """Verify AIP tokens carried in A2A task metadata.
 
 Spec: spec/aip-bindings-a2a.md §3 (token transport) and §4 (verification flow).
+
+Warning: JWT chains are bearer-equivalent here. Any prefix of a valid JWT chain
+also verifies and carries an earlier holder's wider authority, and this module
+does not verify proof of possession. The audience check narrows but does not
+close this: with root -> A -> B -> C, C can present the prefix ending at B to
+B's A2A service. Biscuit chains are not affected.
 """
 
 from __future__ import annotations
@@ -63,7 +69,14 @@ def verify_a2a_task(
 
     from aip_token.jwt_chain import JwtChain, detect_format
 
-    if detect_format(token_str) == "jwt-chain":
+    try:
+        fmt = detect_format(token_str)
+    except TokenError as exc:
+        raise ChainError(str(exc)) from exc
+    if fmt == "compact":
+        raise ChainError("compact tokens are not accepted by the A2A binding")
+
+    if fmt == "jwt-chain":
         try:
             chain = JwtChain.verify(token_str, bytes(root_public_key_bytes))
         except TokenError as exc:

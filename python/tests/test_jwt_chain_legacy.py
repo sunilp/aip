@@ -46,3 +46,21 @@ def test_detect_format():
     assert detect_format(chain.serialize()) == "jwt-chain"
     assert detect_format(chain.serialize() + "~" + chain.serialize()) == "jwt-chain"
     assert detect_format("En0KEwoEdG9vbBgDIgkKBwgKEgMYgAg") == "biscuit"
+
+
+def test_detect_format_rejects_non_string():
+    with pytest.raises(TokenError) as e:
+        detect_format(None)
+    assert e.value.code == "token_malformed"
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_legacy_non_finite_budget_is_malformed(bad):
+    kp = KeyPair.generate()
+    try:
+        tok = legacy(kp, budget_usd=bad)
+    except Exception:
+        pytest.skip("token with non-finite budget cannot be built")
+    with pytest.raises(TokenError) as e:
+        JwtChain.verify(tok, kp.public_key_bytes())
+    assert e.value.code == "token_malformed"

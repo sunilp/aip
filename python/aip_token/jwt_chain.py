@@ -3,14 +3,15 @@
 A chain is a sequence of JWS compact links joined with "~". Link 0 is signed by
 the issuer's root key. Every later link is signed by the key the previous link
 named in its cnf claim, and carries prev, the SHA-256 of the previous link as
-transmitted. That makes each delegator's record authenticated, which the
-Biscuit encoding does not provide.
+transmitted. That authenticates the chain of keys, which the Biscuit encoding
+does not do. Binding a key to the sub identifier it signs for is not checked.
 """
 
 from __future__ import annotations
 
 import base64
 import hashlib
+import math
 import re
 import secrets
 import time
@@ -281,7 +282,7 @@ class JwtChain:
 
         V2 (root binding) is the caller's: it supplies the root key it resolved
         for the issuer this chain declares, and MUST confirm the key belongs to
-        that issuer. V7 is handled by the transport binding.
+        that issuer. V7 (revocation) is not implemented.
         """
         if not isinstance(root_public_key_bytes, bytes) or len(root_public_key_bytes) != 32:
             raise TokenError.token_malformed("root key must be a 32-byte Ed25519 public key")
@@ -323,6 +324,8 @@ class JwtChain:
         from aip_token.compact import CompactToken
 
         claims = CompactToken.verify(segment, root_public_key_bytes).claims
+        if claims.budget_usd is not None and not math.isfinite(claims.budget_usd):
+            raise TokenError.token_malformed("budget_usd is not a finite number")
         link = Link(
             issuer=claims.iss,
             delegate=claims.sub,
@@ -347,6 +350,8 @@ def detect_format(token: str) -> str:
     base64url of '{"'. A JWS header is read without verification only to
     choose the verifier; nothing in it is trusted.
     """
+    if not isinstance(token, str):
+        raise TokenError.token_malformed("token must be a string")
     if not token.startswith("eyJ"):
         return "biscuit"
     if SEPARATOR in token:

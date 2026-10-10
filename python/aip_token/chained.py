@@ -142,6 +142,20 @@ def _parse_expiry(source: str) -> int | None:
     return int(stamp.replace(tzinfo=timezone.utc).timestamp())
 
 
+def _parse_biscuit(text: str, root_public_key_bytes: bytes) -> Biscuit:
+    """Biscuit.from_base64 with decode and verification failures as TokenError."""
+    if not isinstance(text, str):
+        raise TokenError.token_malformed("token must be a string")
+    try:
+        return Biscuit.from_base64(text, _biscuit_public_key(root_public_key_bytes))
+    except TokenError:
+        raise
+    except Exception as exc:  # biscuit_auth.BiscuitValidationError and friends
+        if "decode base64" in str(exc):
+            raise TokenError.token_malformed("cannot decode token") from exc
+        raise TokenError.signature_invalid() from exc
+
+
 class ChainedToken:
     """A Biscuit-based chained delegation token.
 
@@ -319,14 +333,12 @@ class ChainedToken:
 
         V2 (root binding) is the caller's responsibility: it supplies the root
         key it resolved for the issuer this chain declares, and MUST confirm
-        that the key belongs to that issuer. V7 (revocation) is handled by the
-        transport binding.
+        that the key belongs to that issuer. V7 (revocation) is not
+        implemented.
         """
         # V1: re-verify every block signature from the serialized form. Nothing
         # below may read block content before this succeeds.
-        verified = Biscuit.from_base64(
-            self._biscuit.to_base64(), _biscuit_public_key(root_public_key_bytes)
-        )
+        verified = _parse_biscuit(self._biscuit.to_base64(), root_public_key_bytes)
 
         # V3, V4, V5 on the shared link model.
         self._effective = verify_links(self.links(), int(time.time()))
@@ -442,6 +454,11 @@ class ChainedToken:
 
     @property
     def effective(self) -> Link:
+        """The effective authority after verify_chain/authorize.
+
+        For the Biscuit encoding, `tools` is advisory when a block's tool check
+        is not in canonical form; the Datalog checks still enforce it.
+        """
         if self._effective is None:
             raise TokenError.token_malformed("chain has not been verified")
         return self._effective
@@ -450,8 +467,12 @@ class ChainedToken:
 
     @staticmethod
     def from_base64(s: str, root_public_key_bytes: bytes) -> ChainedToken:
-        """Deserialize and verify a token against the root public key (V1)."""
-        biscuit = Biscuit.from_base64(s, _biscuit_public_key(root_public_key_bytes))
+        """Deserialize and verify a token against the root public key (V1).
+
+        Raises TokenError: token_malformed if the input does not decode,
+        signature_invalid if it decodes but does not verify under the key.
+        """
+        biscuit = _parse_biscuit(s, root_public_key_bytes)
         source = biscuit.block_source(0) or ""
         issuer = _parse_str_fact(source, "identity") or "unknown"
         max_depth = _parse_int_fact(source, "max_depth")
