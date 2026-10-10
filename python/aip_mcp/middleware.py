@@ -2,8 +2,8 @@
 
     Warning: JWT chains are bearer-equivalent here. Any prefix of a valid
     JWT chain also verifies and carries an earlier holder's wider authority,
-    and this module does not verify proof of possession. Biscuit chains are
-    not affected.
+    and this module does not verify proof of possession. The A2A verifier
+    (aip_a2a.verify) has the same limitation. Biscuit chains are not affected.
 """
 
 from aip_token.compact import CompactToken

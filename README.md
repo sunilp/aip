@@ -179,7 +179,7 @@ verified.authorize("tool:search")  # passes
 verified.authorize("tool:email")   # raises TokenError (aip_scope_insufficient)
 ```
 
-Note: any prefix of a valid JWT chain also verifies and carries an earlier holder's wider authority. The MCP proxy and middleware do not verify proof of possession, so they treat JWT chains as bearer-equivalent to the root grant. Biscuit chains are not affected.
+Note: any prefix of a valid JWT chain also verifies and carries an earlier holder's wider authority. The MCP proxy, middleware and A2A verifier do not verify proof of possession, so they treat JWT chains as bearer-equivalent to the root grant. Biscuit chains are not affected. Two other limits: the JWT verifier does not check that a link's `cnf` key belongs to its `sub` identifier, and V7 revocation is not implemented. See Known limitations in CHANGELOG.md.
 
 ## A2A Integration
 
