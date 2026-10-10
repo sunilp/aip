@@ -26,11 +26,11 @@ from aip_token.chained import ChainedToken  # noqa: E402
 ROOT_ID, B_ID, C_ID = "aip:web:a.example", "aip:web:b.example", "aip:web:c.example"
 
 VIOLATIONS = {
-    "tool_widening": ({"tools": ["tool:delete"]}, "scope_insufficient"),
-    "domain_widening": ({"domains": ["evil.com"]}, "scope_insufficient"),
-    "budget_raise": ({"budget": 900}, "budget_exceeded"),
-    "principal_swap": ({"principal": "user:mallory"}, "token_malformed"),
-    "missing_context": ({"context": ""}, "token_malformed"),
+    "tool_widening": ({"tools": ["tool:delete"]}, "scope_insufficient", "widens tools"),
+    "domain_widening": ({"domains": ["evil.com"]}, "scope_insufficient", "widens domains"),
+    "budget_raise": ({"budget": 900}, "budget_exceeded", "budget"),
+    "principal_swap": ({"principal": "user:mallory"}, "token_malformed", "substitutes the principal"),
+    "missing_context": ({"context": ""}, "token_malformed", "has no context"),
 }
 
 
@@ -81,7 +81,8 @@ def jwt_attack(spec):
 @pytest.mark.parametrize("encoding", [biscuit_attack, jwt_attack], ids=["biscuit", "jwt"])
 @pytest.mark.parametrize("name", sorted(VIOLATIONS))
 def test_violation_rejected_in_both_encodings(encoding, name):
-    spec, expected = VIOLATIONS[name]
+    spec, expected, reason = VIOLATIONS[name]
     with pytest.raises(TokenError) as e:
         encoding(spec)()
     assert e.value.code == expected
+    assert reason in str(e.value)
