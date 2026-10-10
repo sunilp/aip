@@ -2,6 +2,11 @@
 
 Sits between an MCP client and an MCP server, verifying AIP tokens
 and running security self-audit on every request.
+
+    Warning: JWT chains are bearer-equivalent here. Any prefix of a valid
+    JWT chain also verifies and carries an earlier holder's wider authority,
+    and this module does not verify proof of possession. Biscuit chains are
+    not affected.
 """
 
 from __future__ import annotations

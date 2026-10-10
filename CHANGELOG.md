@@ -2,6 +2,57 @@
 
 All notable changes to AIP (Agent Identity Protocol) are documented here.
 
+## [0.6.0] - Unreleased
+
+Accompanies IETF draft-prakash-aip-02.
+
+### Added
+
+- JWT chain encoding: `aip_token.jwt_chain.JwtChain`, media type
+  `application/aip-chain+jwt`, link `typ` `aip-link+jwt`.
+- A shared, encoding-neutral chain model in `aip_token.chain_model`, so the
+  Biscuit and JWT encodings run the same attenuation, expiry and authorization
+  checks.
+- Domain allowlists in both encodings. In Biscuit chains they are carried as
+  facts only.
+- `JwtChain.leaf_holder_key()`, the key a relying party needs for proof of
+  possession.
+- `TokenError.wire_code`.
+- The MCP middleware, the MCP proxy and the A2A verifier accept JWT chains.
+
+### Changed
+
+Behaviour visible to callers:
+
+- Biscuit `verify_chain` now enforces expiry structurally, so expired chains
+  are rejected on requests that name no tool. A2A raises `ExpiryError` rather
+  than `ScopeError` for expired tokens.
+- An authority token with no tools is rejected. It previously authorized every
+  tool.
+- Empty `tools` or `domains` lists are malformed.
+- Duplicate single-valued facts in a Biscuit block are malformed.
+- Biscuit links missing identity, delegator or delegate are malformed.
+- Compact tokens must carry `typ` `aip+jwt`.
+- `cnf` keys must be strict base64url.
+- `JwtChain.verify` requires a 32-byte `bytes` root key.
+- Identity document signatures are decoded as base64url. Standard base64 is
+  still accepted.
+
+### Deprecated
+
+- `CompactToken` and `typ` `aip+jwt`. They are still verified. Draft-02 folds
+  compact mode into the one-link JWT chain.
+
+### Known limitations
+
+- JWT chains: any prefix of a valid chain also verifies and carries an earlier
+  holder's wider authority. The MCP proxy and middleware do not verify proof of
+  possession, so they treat JWT chains as bearer-equivalent to the root grant.
+  Biscuit chains are not affected.
+- The JWT verifier does not check that a link's `cnf` key belongs to its `sub`
+  identifier.
+- V7 revocation is not implemented.
+
 ## [0.5.0] - 2026-08-23
 
 ### Security

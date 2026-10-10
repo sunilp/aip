@@ -1,3 +1,11 @@
+"""AIP MCP middleware: token extraction and request verification.
+
+    Warning: JWT chains are bearer-equivalent here. Any prefix of a valid
+    JWT chain also verifies and carries an earlier holder's wider authority,
+    and this module does not verify proof of possession. Biscuit chains are
+    not affected.
+"""
+
 from aip_token.compact import CompactToken
 from aip_token.error import TokenError
 from aip_token.jwt_chain import JwtChain, detect_format
