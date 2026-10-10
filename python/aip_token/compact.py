@@ -54,6 +54,12 @@ class CompactToken:
         Raises ``TokenError`` on any failure (expired, bad signature, malformed).
         """
         try:
+            header = jwt.get_unverified_header(token_str)
+        except Exception as exc:
+            raise TokenError.token_malformed(str(exc))
+        if header.get("typ") != "aip+jwt":
+            raise TokenError.token_malformed("compact token typ must be aip+jwt")
+        try:
             public_key = Ed25519PublicKey.from_public_bytes(public_key_bytes)
             payload = jwt.decode(
                 token_str,

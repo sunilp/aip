@@ -92,3 +92,41 @@ def test_header_typ():
     header = CompactToken.decode_header(token_str)
     assert header["typ"] == "aip+jwt"
     assert header["alg"] == "EdDSA"
+
+
+def _hand_signed(kp, headers):
+    import time
+
+    import jwt
+
+    now = int(time.time())
+    payload = AipClaims(
+        iss="aip:web:jamjet.dev/agents/orchestrator",
+        sub="aip:web:jamjet.dev/agents/research",
+        scope=["tool:search"], budget_usd=0.5, max_depth=0,
+        iat=now, exp=now + 600,
+    ).model_dump(mode="json")
+    return jwt.encode(payload, kp._private_key, algorithm="EdDSA", headers=headers)
+
+
+def test_reject_plain_jwt_typ():
+    kp = KeyPair.generate()
+    token = _hand_signed(kp, {"typ": "JWT"})
+    with pytest.raises(TokenError) as e:
+        CompactToken.verify(token, kp.public_key_bytes())
+    assert e.value.code == "token_malformed"
+
+
+def test_reject_missing_typ():
+    kp = KeyPair.generate()
+    token = _hand_signed(kp, {"typ": None})
+    assert "typ" not in CompactToken.decode_header(token)
+    with pytest.raises(TokenError) as e:
+        CompactToken.verify(token, kp.public_key_bytes())
+    assert e.value.code == "token_malformed"
+
+
+def test_accept_aip_jwt_typ_hand_signed():
+    kp = KeyPair.generate()
+    token = _hand_signed(kp, {"typ": "aip+jwt"})
+    assert CompactToken.verify(token, kp.public_key_bytes()).claims.max_depth == 0
