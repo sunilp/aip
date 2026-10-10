@@ -237,3 +237,69 @@ def test_garbage_is_malformed_or_missing(keys, token):
     with pytest.raises(TokenError) as e:
         JwtChain.verify(token, keys["root"].public_key_bytes())
     assert code(e) in ("token_missing", "token_malformed")
+
+
+# -- hardening and leaf holder key ------------------------------------------
+
+
+def test_leaf_holder_key(keys):
+    chain = JwtChain.verify(make_chain(keys).serialize(), keys["root"].public_key_bytes())
+    assert chain.leaf_holder_key() == keys["c"].public_key_bytes()
+
+
+def test_prefix_of_chain_verifies_with_middle_holder_as_leaf(keys):
+    """Truncation property: a prefix verifies, so PoP must use leaf_holder_key()."""
+    first = make_chain(keys).serialize().split("~")[0]
+    chain = JwtChain.verify(first, keys["root"].public_key_bytes())
+    assert chain.leaf_holder_key() == keys["b"].public_key_bytes()
+    assert chain.leaf_holder_key() != keys["c"].public_key_bytes()
+
+
+def test_legacy_leaf_holder_key_raises():
+    from aip_token.claims import AipClaims
+    from aip_token.compact import CompactToken
+
+    kp = KeyPair.generate()
+    now = int(time.time())
+    token = CompactToken.create(
+        AipClaims(iss="aip:web:a.example", sub="aip:web:b.example", scope=["tool:search"],
+                  budget_usd=None, max_depth=0, iat=now, exp=now + 300), kp)
+    chain = JwtChain.verify(token, kp.public_key_bytes())
+    with pytest.raises(TokenError) as e:
+        chain.leaf_holder_key()
+    assert code(e) == "token_malformed"
+
+
+def test_non_string_token_is_malformed(keys):
+    for bad in (None, 5, b"abc", ["a"]):
+        with pytest.raises(TokenError) as e:
+            JwtChain.verify(bad, keys["root"].public_key_bytes())
+        assert code(e) == "token_malformed"
+    with pytest.raises(TokenError) as e:
+        JwtChain.verify("", keys["root"].public_key_bytes())
+    assert code(e) == "token_missing"
+
+
+@pytest.mark.parametrize("bad", [b"short", b"\x00" * 33, "a" * 32, None, bytearray(32)])
+def test_bad_root_key_is_malformed(keys, bad):
+    token = make_chain(keys).serialize()
+    with pytest.raises(TokenError) as e:
+        JwtChain.verify(token, bad)
+    assert code(e) == "token_malformed"
+
+
+def test_cnf_x_must_be_strict_base64url(keys):
+    x = holder_jwk(keys["b"].public_key_bytes())["x"]
+    bad = {"cnf": {"jwk": {"kty": "OKP", "crv": "Ed25519", "x": "!!" + x}}}
+    with pytest.raises(TokenError) as e:
+        jwt_chain._holder_key(bad)
+    assert code(e) == "token_malformed"
+
+    now = int(time.time())
+    claims = {"iss": ROOT_ID, "sub": B_ID, "iat": now, "exp": now + 600, "jti": "x",
+              "aip_tools": ["tool:search"], "aip_max_depth": 1, **bad}
+    token = jwt.encode(claims, keys["root"]._private_key, algorithm="EdDSA",
+                       headers={"typ": "aip-link+jwt"})
+    with pytest.raises(TokenError) as e:
+        JwtChain.verify(token, keys["root"].public_key_bytes())
+    assert code(e) == "token_malformed"

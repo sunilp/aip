@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import re
 import secrets
 import time
 from typing import Any
@@ -55,6 +56,8 @@ def _holder_key(claims: dict) -> bytes:
         or not isinstance(jwk_.get("x"), str)
     ):
         raise TokenError.token_malformed("cnf must carry an Ed25519 OKP jwk")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", jwk_["x"]):
+        raise TokenError.token_malformed("cnf jwk x is not base64url")
     try:
         key = _b64url_decode(jwk_["x"])
     except Exception as exc:
@@ -176,6 +179,17 @@ class JwtChain:
     def leaf_delegate(self) -> str | None:
         return self._links[-1].delegate
 
+    def leaf_holder_key(self) -> bytes:
+        """Raw Ed25519 public key named by the leaf link's cnf.
+
+        A relying party that needs attenuation to hold against downstream
+        holders MUST verify proof of possession against this key: any prefix
+        of a valid chain also verifies, and carries wider authority.
+        """
+        if not self._claims[-1].get("cnf"):
+            raise TokenError.token_malformed("legacy compact token names no holder key")
+        return _holder_key(self._claims[-1])
+
     def serialize(self) -> str:
         return SEPARATOR.join(self._segments)
 
@@ -269,6 +283,10 @@ class JwtChain:
         for the issuer this chain declares, and MUST confirm the key belongs to
         that issuer. V7 is handled by the transport binding.
         """
+        if not isinstance(root_public_key_bytes, bytes) or len(root_public_key_bytes) != 32:
+            raise TokenError.token_malformed("root key must be a 32-byte Ed25519 public key")
+        if not isinstance(token, str):
+            raise TokenError.token_malformed("token must be a string")
         if not token:
             raise TokenError.token_missing()
         now = int(time.time()) if now is None else now
