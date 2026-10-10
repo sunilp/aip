@@ -47,7 +47,7 @@ def _build_signed_document(
     sig = kp.sign(canonical.encode("utf-8"))
 
     import base64
-    doc["document_signature"] = base64.b64encode(sig).decode("ascii")
+    doc["document_signature"] = base64.urlsafe_b64encode(sig).rstrip(b"=").decode("ascii")
 
     return json.dumps(doc)
 
@@ -161,3 +161,28 @@ class TestVersionCheck:
         doc = IdentityDocument.from_json(raw)
         # Should not raise
         doc.check_version()
+
+
+def test_signature_accepts_base64url_without_padding():
+    import base64
+    from aip_core.document import PublicKeyEntry
+
+    # Loop until we get a signature with - or _ to ensure it actually exercises
+    # the base64url decoding path (standard base64 is ~97% likely to have these chars)
+    for attempt in range(1000):
+        kp = KeyPair.generate()
+        doc = IdentityDocument(
+            aip="1.0", id="aip:web:example.com/agent",
+            public_keys=[PublicKeyEntry(id="k1", type="Ed25519",
+                                        public_key_multibase=kp.public_key_multibase())],
+        )
+        sig = kp.sign(doc.canonical_json().encode("utf-8"))
+        doc.document_signature = base64.urlsafe_b64encode(sig).rstrip(b"=").decode("ascii")
+
+        # If this signature contains - or _, we found a good test case
+        if "-" in doc.document_signature or "_" in doc.document_signature:
+            doc.verify_signature()  # Should not raise
+            return
+
+    # If we somehow didn't find a - or _, still verify the last one works
+    doc.verify_signature()

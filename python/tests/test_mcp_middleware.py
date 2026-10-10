@@ -69,3 +69,20 @@ def test_error_response_format():
     resp = aip_error_response("aip_token_missing", "No AIP token provided", 401)
     assert resp["error"]["code"] == "aip_token_missing"
     assert resp["status"] == 401
+
+
+def test_verify_request_garbage_biscuit_is_token_error():
+    kp = KeyPair.generate()
+    with pytest.raises(TokenError):
+        verify_request({"X-AIP-Token": "garbage"}, kp.public_key_bytes(), "tool:search")
+
+
+def test_verify_request_biscuit_other_key_is_signature_invalid():
+    from aip_token.chained import ChainedToken
+    signer, other = KeyPair.generate(), KeyPair.generate()
+    tok = ChainedToken.create_authority(
+        issuer="aip:web:example.com/agent", scopes=["tool:search"], budget_cents=100,
+        max_depth=2, ttl_seconds=300, keypair=signer)
+    with pytest.raises(TokenError) as e:
+        verify_request({"X-AIP-Token": tok.to_base64()}, other.public_key_bytes(), "tool:search")
+    assert e.value.code == "signature_invalid"

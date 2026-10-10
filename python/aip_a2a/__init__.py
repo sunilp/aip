@@ -14,7 +14,7 @@ from aip_a2a.verify import VerifiedIdentity, extract_token_from_task, verify_a2a
 from aip_a2a.delegate import append_delegation_block
 from aip_a2a.middleware import A2AVerifyMiddleware
 
-__version__ = "0.3.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "AipIdentity",

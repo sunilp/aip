@@ -2,6 +2,78 @@
 
 All notable changes to AIP (Agent Identity Protocol) are documented here.
 
+## [0.6.0] - Unreleased
+
+Accompanies IETF draft-prakash-aip-02.
+
+### Added
+
+- JWT chain encoding: `aip_token.jwt_chain.JwtChain`, media type
+  `application/aip-chain+jwt`, link `typ` `aip-link+jwt`.
+- A shared, encoding-neutral chain model in `aip_token.chain_model`, so the
+  Biscuit and JWT encodings run the same attenuation, expiry and authorization
+  checks.
+- Domain allowlists in both encodings. In Biscuit chains they are carried as
+  facts only.
+- `JwtChain.leaf_holder_key()`, the key a relying party needs for proof of
+  possession.
+- `TokenError.wire_code`.
+- The MCP middleware, the MCP proxy and the A2A verifier accept JWT chains.
+  `aip_mcp.detect_mode` can now return `"jwt-chain"` (tokens starting with
+  `eyJ` that contain `~` or carry `typ` `aip-link+jwt`).
+- `JwtChain.verify` requires a 32-byte `bytes` root key.
+
+### Changed
+
+Behaviour visible to callers:
+
+- Biscuit `verify_chain` now enforces expiry structurally, so expired chains
+  are rejected on requests that name no tool. A2A raises `ExpiryError` rather
+  than `ScopeError` for expired tokens.
+- An authority token with no tools is rejected. It previously authorized every
+  tool.
+- Empty `tools` or `domains` lists are malformed.
+- Duplicate single-valued facts in a Biscuit block are malformed.
+- Biscuit links missing identity, delegator or delegate are malformed.
+- Compact tokens must carry `typ` `aip+jwt`.
+- `cnf` keys must be strict base64url.
+- A Biscuit authority block without `max_depth`, or without the canonical
+  time check, is malformed. The depth check used to be skipped when
+  `max_depth` was absent.
+- Biscuit decode and signature failures now raise `TokenError`
+  (`token_malformed` when the input does not decode, `signature_invalid`
+  otherwise) instead of `biscuit_auth.BiscuitValidationError`. The MCP
+  middleware no longer returns a 500 for garbage or foreign-key tokens.
+- The A2A verifier rejects compact tokens with `ChainError`, as the A2A
+  binding does not accept them. `detect_format` raises
+  `TokenError.token_malformed` for non-string input.
+- Legacy compact tokens: `JwtChain.verify` applies wildcard matching plus V3
+  and V4, while the MCP middleware and proxy keep -01 exact-match
+  `CompactToken` semantics, so `tool:*` behaves differently by API. A
+  non-finite `budget_usd` is malformed.
+- `aip_a2a.__version__` is now 0.6.0.
+- Identity document signatures are decoded as base64url. Standard base64 is
+  still accepted.
+
+### Deprecated
+
+- `CompactToken` and `typ` `aip+jwt`. They are still verified. Draft-02 folds
+  compact mode into the one-link JWT chain.
+
+### Known limitations
+
+- JWT chains: any prefix of a valid chain also verifies and carries an earlier
+  holder's wider authority. The MCP proxy, middleware and A2A verifier do not
+  verify proof of possession, so they treat JWT chains as bearer-equivalent to
+  the root grant. In A2A the audience check narrows this but does not close it:
+  with root, A, B, C, C can present the prefix ending at B to B's service.
+  Biscuit chains are not affected.
+- Domain allowlists are encoded and attenuation-checked, but no binding
+  supplies a request domain yet, so they are not enforced against requests.
+- The JWT verifier does not check that a link's `cnf` key belongs to its `sub`
+  identifier.
+- V7 revocation is not implemented.
+
 ## [0.5.0] - 2026-08-23
 
 ### Security
