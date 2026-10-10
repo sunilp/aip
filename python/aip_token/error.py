@@ -13,6 +13,15 @@ class TokenError(Exception):
     def error_code(self) -> str:
         return self.code
 
+    @property
+    def wire_code(self) -> str:
+        """The error code as the draft spells it, always ``aip_``-prefixed.
+
+        ``code`` keeps whatever spelling the raising site used, because
+        existing callers match on both forms.
+        """
+        return self.code if self.code.startswith("aip_") else f"aip_{self.code}"
+
     # -- convenience constructors ------------------------------------------
 
     @classmethod
